@@ -1,3 +1,8 @@
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![API Version](https://img.shields.io/badge/API-AioCheckOut%20V5-blue)
+![Platform](https://img.shields.io/badge/Platform-Taiwan-green)
+![AI Skill](https://img.shields.io/badge/AI%20Skill-Claude%20%7C%20OpenAI-purple)
+
 # OMG 金流串接 Skill | OMG Payment Gateway Skill
 
 > **繁體中文** | [English](#english)
@@ -9,6 +14,19 @@
 ### 這是什麼？
 
 這是 **AI Skill 檔案**，讓 AI 助手（如 Claude Code、Cowork、ChatGPT）能夠理解 **OMG 金流**（歐買尬第三方支付）的完整 API 規格，並協助開發者快速產生正確的串接程式碼。
+
+這個專案提供了一個完整的 Taiwan 第三方支付網關整合方案，支援多種電子商務付款方式，包括信用卡、ATM 轉帳、超商代碼繳款等。無論你是在建置新的支付系統或整合現有的電商平台，本 Skill 透過 AI 驅動的代碼生成功能，讓付款 API 整合變得簡單快速。我們提供完整的 API 文件、定期定額/訂閱制計費支援、以及生產環境遷移指南。
+
+### 包含內容 / What's Included
+
+- **Complete API documentation** — 6 核心端點的完整規格
+- **SDK wrapper class** — Python、Node.js、PHP、C# 多語言支援
+- **Admin dashboard generation guide** — 廠商後台整合指南
+- **Health check & monitoring** — 系統健康檢查與監控方案
+- **Automated error diagnosis** — 自動化錯誤診斷工具
+- **Debug tools & checklist** — 除錯工具與檢查清單
+- **FastAPI complete example** — 完整的 FastAPI 實作範例
+- **Production migration guide** — 從測試環境到正式環境的遷移指南
 
 ### 公司資訊
 
@@ -82,6 +100,15 @@ cp SKILL_OPENAI.md your-project/
 
 將 Skill 檔案的內容貼給 AI，或上傳檔案後說「請根據這份金流文件幫我串接 OMG 金流」。
 
+### 支援的 AI 平台 / Supported AI Platforms
+
+| AI 平台 | 檔案 | 使用方式 |
+|---------|------|---------|
+| Claude Code | SKILL.md | 放入 `.skills/skills/omg-payment/` |
+| Claude Cowork | SKILL.md | 上傳或引用 |
+| ChatGPT | SKILL_OPENAI.md | 自訂指令或上傳檔案 |
+| 任何 AI | 任一檔案 | 上傳並請求整合協助 |
+
 ### 測試帳號
 
 | 項目 | 值 |
@@ -116,6 +143,19 @@ omg-payment-skill/
 ### What is this?
 
 This is an **AI Skill file** that enables AI assistants (such as Claude Code, Cowork, ChatGPT) to understand the complete API specification of the **OMG Payment Gateway** (歐買尬 third-party payment) and help developers quickly generate correct integration code.
+
+This project delivers a comprehensive Taiwan-based payment gateway integration solution for e-commerce platforms, supporting multiple payment methods including credit cards, ATM transfers, and convenience store payment codes. Whether you're building a new payment system or integrating payment processing into an existing e-commerce application, this Skill uses AI-powered code generation to make payment API integration straightforward and efficient. We provide complete API documentation, support for recurring subscription billing, credit card payments, and a detailed production migration guide to help you move from testing to live environments seamlessly.
+
+### What's Included
+
+- **Complete API documentation** — Full specifications for 6 core endpoints
+- **SDK wrapper class** — Support for Python, Node.js, PHP, and C#
+- **Admin dashboard generation guide** — Vendor backend integration instructions
+- **Health check & monitoring** — System health verification and monitoring solutions
+- **Automated error diagnosis** — Intelligent error detection and resolution
+- **Debug tools & checklist** — Debugging utilities and troubleshooting checklist
+- **FastAPI complete example** — Full-featured FastAPI implementation reference
+- **Production migration guide** — Step-by-step guide from testing to production environment
 
 ### Company Information
 
@@ -188,6 +228,15 @@ Paste the contents of `SKILL_OPENAI.md` into ChatGPT's Custom Instructions, or u
 #### Method 3: Tell AI directly
 
 Paste the Skill file contents to the AI, or upload the file and ask for integration help.
+
+### Supported AI Platforms
+
+| AI Platform | File | Method |
+|-------------|------|--------|
+| Claude Code | SKILL.md | Place in `.skills/skills/omg-payment/` |
+| Claude Cowork | SKILL.md | Upload or reference |
+| ChatGPT | SKILL_OPENAI.md | Custom Instructions or upload |
+| Any AI | Either file | Upload and ask for integration help |
 
 ### Test Credentials
 

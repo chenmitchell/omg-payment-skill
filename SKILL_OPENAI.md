@@ -793,6 +793,631 @@ Common RtnCode values:
 
 ---
 
+## SDK Wrapper Class | SDK 包裝類別
+
+For seamless Taiwan e-commerce integration with payment APIs, we provide a production-ready Python SDK wrapper class called `OMGPaymentClient`. This comprehensive SDK wrapper encapsulates all 6 API methods and manages payment processing for Taiwan third-party payment systems.
+
+```python
+import hashlib
+import logging
+from typing import Dict, Optional, Any
+from urllib.parse import quote
+import requests
+from datetime import datetime
+
+class OMGPaymentClient:
+    """
+    OMG Payment Gateway SDK Wrapper (歐買尬金流 SDK 包裝類)
+    Supports all 6 payment API methods with auto test/production URL switching.
+    Handles credit card payments, ATM virtual accounts, convenience store payments,
+    and recurring subscription payments.
+    """
+
+    DOTNET_REPLACEMENTS = {
+        "%2d": "-", "%5f": "_", "%2e": ".",
+        "%21": "!", "%2a": "*", "%28": "(", "%29": ")",
+    }
+
+    ENDPOINTS = {
+        "aio_checkout": "/Cashier/AioCheckOut/V5",
+        "query_trade": "/Cashier/QueryTradeInfo/V5",
+        "query_recurring": "/Cashier/QueryCreditCardPeriodInfo",
+        "recurring_action": "/Cashier/CreditCardPeriodAction",
+        "do_action": "/CreditDetail/DoAction",
+        "query_credit_detail": "/CreditDetail/QueryTrade/V2",
+    }
+
+    def __init__(
+        self,
+        merchant_id: str,
+        hash_key: str,
+        hash_iv: str,
+        production: bool = False,
+        timeout: int = 10,
+        retry_count: int = 3
+    ):
+        """
+        Initialize OMG Payment Client.
+
+        Args:
+            merchant_id: Merchant ID from OMG payment gateway
+            hash_key: Hash key for CheckMacValue generation
+            hash_iv: Hash IV for CheckMacValue generation
+            production: Use production URLs if True, test URLs if False
+            timeout: Request timeout in seconds
+            retry_count: Number of retry attempts for failed requests
+        """
+        self.merchant_id = merchant_id
+        self.hash_key = hash_key
+        self.hash_iv = hash_iv
+        self.production = production
+        self.timeout = timeout
+        self.retry_count = retry_count
+
+        self.base_url = (
+            "https://payment.funpoint.com.tw"
+            if production
+            else "https://payment-stage.funpoint.com.tw"
+        )
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+
+    def generate_check_mac_value(self, params: Dict[str, Any]) -> str:
+        """
+        Generate CheckMacValue for payment request signature.
+        This implements the SHA256-based payment signature mechanism.
+
+        Args:
+            params: Dictionary of payment parameters
+
+        Returns:
+            Uppercase CheckMacValue string for payment verification
+        """
+        filtered = {k: v for k, v in params.items() if k != "CheckMacValue"}
+        sorted_keys = sorted(filtered.keys(), key=lambda k: k.lower())
+        param_str = "&".join(f"{k}={filtered[k]}" for k in sorted_keys)
+        raw = f"HashKey={self.hash_key}&{param_str}&HashIV={self.hash_iv}"
+        encoded = quote(raw, safe="").lower()
+
+        for old, new in self.DOTNET_REPLACEMENTS.items():
+            encoded = encoded.replace(old, new)
+
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
+
+    def create_order(
+        self,
+        merchant_trade_no: str,
+        total_amount: int,
+        trade_desc: str,
+        item_name: str,
+        return_url: str,
+        choose_payment: str = "ALL",
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Create payment order using AioCheckOut API.
+        Generates form parameters for redirecting users to OMG payment page
+        to process credit card, ATM, or convenience store payments.
+
+        Args:
+            merchant_trade_no: Unique order number (max 20 chars)
+            total_amount: Transaction amount in NT$ (integer)
+            trade_desc: Order description
+            item_name: Product name(s)
+            return_url: Server notification URL for payment callbacks
+            choose_payment: Payment method (Credit, ATM, CVS, BARCODE, AFTEE, ALL)
+            **kwargs: Additional parameters (StoreID, OrderResultURL, etc.)
+
+        Returns:
+            Dictionary with payment form parameters ready for submission
+        """
+        trade_date = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+
+        params = {
+            "MerchantID": self.merchant_id,
+            "MerchantTradeNo": merchant_trade_no,
+            "MerchantTradeDate": trade_date,
+            "PaymentType": "aio",
+            "TotalAmount": total_amount,
+            "TradeDesc": trade_desc,
+            "ItemName": item_name,
+            "ReturnURL": return_url,
+            "ChoosePayment": choose_payment,
+            "EncryptType": 1,
+        }
+
+        params.update(kwargs)
+        params["CheckMacValue"] = self.generate_check_mac_value(params)
+
+        self.logger.info(f"Order created: {merchant_trade_no} for {total_amount} NT$")
+        return params
+
+    def query_trade_info(
+        self,
+        merchant_trade_no: str,
+        timestamp: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Query payment transaction status using QueryTradeInfo API.
+        Retrieves complete trade information including payment method and status.
+
+        Args:
+            merchant_trade_no: Original order number
+            timestamp: Unix timestamp (auto-generated if not provided)
+
+        Returns:
+            Payment transaction details including TradeStatus and PaymentType
+        """
+        if timestamp is None:
+            timestamp = int(datetime.now().timestamp())
+
+        params = {
+            "MerchantID": self.merchant_id,
+            "MerchantTradeNo": merchant_trade_no,
+            "TimeStamp": timestamp,
+        }
+
+        params["CheckMacValue"] = self.generate_check_mac_value(params)
+
+        return self._make_request(
+            "query_trade",
+            params,
+            max_retries=self.retry_count
+        )
+
+    def query_recurring_info(
+        self,
+        merchant_trade_no: str,
+        timestamp: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Query recurring payment subscription status.
+        Useful for managing 定期定額 (subscription) payments.
+
+        Args:
+            merchant_trade_no: Original recurring order number
+            timestamp: Unix timestamp for request validation
+
+        Returns:
+            Recurring payment details including execution status and history
+        """
+        if timestamp is None:
+            timestamp = int(datetime.now().timestamp())
+
+        params = {
+            "MerchantID": self.merchant_id,
+            "MerchantTradeNo": merchant_trade_no,
+            "TimeStamp": timestamp,
+        }
+
+        params["CheckMacValue"] = self.generate_check_mac_value(params)
+
+        return self._make_request(
+            "query_recurring",
+            params,
+            max_retries=self.retry_count
+        )
+
+    def cancel_recurring(
+        self,
+        merchant_trade_no: str
+    ) -> Dict[str, Any]:
+        """
+        Cancel recurring payment subscription (irreversible).
+
+        Args:
+            merchant_trade_no: Original recurring order number
+
+        Returns:
+            Response with RtnCode=1 if cancellation successful
+        """
+        params = {
+            "MerchantID": self.merchant_id,
+            "MerchantTradeNo": merchant_trade_no,
+            "Action": "Cancel",
+        }
+
+        params["CheckMacValue"] = self.generate_check_mac_value(params)
+
+        self.logger.warning(f"Cancelled recurring subscription: {merchant_trade_no}")
+        return self._make_request(
+            "recurring_action",
+            params,
+            max_retries=self.retry_count
+        )
+
+    def do_action(
+        self,
+        merchant_trade_no: str,
+        trade_no: str,
+        action: str,
+        total_amount: int
+    ) -> Dict[str, Any]:
+        """
+        Execute credit card transaction actions.
+        Supports capture, refund, cancel, and abandon operations.
+
+        Args:
+            merchant_trade_no: Merchant order number
+            trade_no: OMG transaction number
+            action: 'C' (Capture), 'R' (Refund), 'E' (Cancel), 'N' (Abandon)
+            total_amount: Operation amount in NT$
+
+        Returns:
+            Response with action execution status
+        """
+        params = {
+            "MerchantID": self.merchant_id,
+            "MerchantTradeNo": merchant_trade_no,
+            "TradeNo": trade_no,
+            "Action": action,
+            "TotalAmount": total_amount,
+        }
+
+        params["CheckMacValue"] = self.generate_check_mac_value(params)
+
+        self.logger.info(
+            f"DoAction {action} for {merchant_trade_no}: {total_amount} NT$"
+        )
+        return self._make_request(
+            "do_action",
+            params,
+            max_retries=self.retry_count
+        )
+
+    def query_credit_detail(
+        self,
+        credit_refund_id: str,
+        credit_amount: int
+    ) -> Dict[str, Any]:
+        """
+        Query credit card transaction details.
+        Returns detailed information about single credit card transactions.
+
+        Args:
+            credit_refund_id: Credit refund ID
+            credit_amount: Credit amount in NT$
+
+        Returns:
+            Credit card transaction status and history
+        """
+        credit_check_code = hashlib.sha256(
+            f"{self.merchant_id}{credit_refund_id}{credit_amount}"
+            f"{self.hash_key}{self.hash_iv}".encode("utf-8")
+        ).hexdigest().upper()
+
+        params = {
+            "MerchantID": self.merchant_id,
+            "CreditRefundId": credit_refund_id,
+            "CreditAmount": credit_amount,
+            "CreditCheckCode": credit_check_code,
+        }
+
+        return self._make_request(
+            "query_credit_detail",
+            params,
+            max_retries=self.retry_count
+        )
+
+    def _make_request(
+        self,
+        endpoint_key: str,
+        params: Dict[str, Any],
+        max_retries: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Make HTTP request with automatic retry logic.
+
+        Args:
+            endpoint_key: Key from ENDPOINTS dict
+            params: Request parameters
+            max_retries: Number of retry attempts
+
+        Returns:
+            Response as dictionary
+        """
+        url = self.base_url + self.ENDPOINTS[endpoint_key]
+
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    url,
+                    data=params,
+                    timeout=self.timeout,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"}
+                )
+                response.raise_for_status()
+
+                if endpoint_key == "query_credit_detail":
+                    return response.json()
+                return response.text
+
+            except requests.exceptions.RequestException as e:
+                self.logger.warning(
+                    f"Request failed (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt == max_retries - 1:
+                    self.logger.error(f"Request failed after {max_retries} retries")
+                    raise
+
+
+# Usage Example
+if __name__ == "__main__":
+    client = OMGPaymentClient(
+        merchant_id="1000031",
+        hash_key="265fIDjIvesceXWM",
+        hash_iv="pOOvhGd1V2pJbjfX",
+        production=False
+    )
+
+    # Create payment order
+    order_params = client.create_order(
+        merchant_trade_no="ORDER20250304001",
+        total_amount=1000,
+        trade_desc="Product Purchase",
+        item_name="Test Product",
+        return_url="https://yourdomain.com/payment/callback",
+        choose_payment="ALL"
+    )
+    print("Payment form parameters:", order_params)
+
+    # Query transaction status
+    trade_info = client.query_trade_info("ORDER20250304001")
+    print("Trade info:", trade_info)
+```
+
+---
+
+## Dashboard & Monitoring Guidance | 儀表板與監控指南
+
+When AI is asked to create a payment dashboard for Taiwan e-commerce operations, it should generate React components and monitoring systems that handle the complete payment lifecycle. The OMG payment gateway supports multiple payment methods including credit card payments and ATM virtual accounts, requiring comprehensive monitoring capabilities.
+
+### React Dashboard Components
+
+When generating a payment dashboard, include these essential components:
+
+**Transaction List Component**: Display all payment transactions with filtering by payment method, date range, and status. Support for refund management operations, including partial refunds for credit card transactions and reversal of failed ATM transfers.
+
+```javascript
+// Example: Transaction List Component
+import React, { useState, useEffect } from 'react';
+import { LineChart, BarChart, Card, Table } from '@your-ui-library';
+
+export function PaymentDashboard() {
+  const [transactions, setTransactions] = useState([]);
+  const [chartData, setChartData] = useState([]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    const response = await fetch('/api/payments/transactions');
+    const data = await response.json();
+    setTransactions(data);
+    generateCharts(data);
+  };
+
+  const generateCharts = (data) => {
+    // Daily transaction volume chart
+    // Payment method distribution pie chart
+    // Revenue trend chart
+  };
+
+  return (
+    <div className="dashboard">
+      <Card title="Transaction Volume">
+        <LineChart data={chartData.volume} />
+      </Card>
+      <Card title="Payment Methods Distribution">
+        <BarChart data={chartData.methods} />
+      </Card>
+      <Card title="Recent Transactions">
+        <Table columns={['Order', 'Amount', 'Method', 'Status']}
+               data={transactions} />
+      </Card>
+      <Card title="Refund Management">
+        <RefundPanel transactions={transactions} />
+      </Card>
+    </div>
+  );
+}
+```
+
+### Health Check Endpoint
+
+Implement a health check endpoint to verify payment gateway connectivity and system status:
+
+```python
+# Health Check Endpoint
+from flask import Flask, jsonify
+from datetime import datetime
+
+app = Flask(__name__)
+
+@app.route('/api/health/payment', methods=['GET'])
+def payment_health_check():
+    """
+    Health check for OMG payment gateway integration.
+    Returns system status and connectivity information.
+    """
+    try:
+        # Verify database connection
+        db_status = check_database_connection()
+
+        # Check OMG API connectivity
+        omg_status = check_omg_api_connectivity()
+
+        # Verify webhook endpoint accessibility
+        webhook_status = check_webhook_endpoint()
+
+        return jsonify({
+            "status": "healthy" if all([db_status, omg_status, webhook_status]) else "degraded",
+            "timestamp": datetime.now().isoformat(),
+            "components": {
+                "database": {"status": "ok" if db_status else "error"},
+                "payment_api": {"status": "ok" if omg_status else "error"},
+                "webhook_endpoint": {"status": "ok" if webhook_status else "error"},
+            },
+            "payment_methods_available": [
+                "Credit Card", "ATM Virtual Account",
+                "Convenience Store Payment Code", "Barcode Payment"
+            ]
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+```
+
+### Transaction Monitoring Patterns
+
+For Taiwan e-commerce platforms, monitor these key payment metrics:
+
+1. **Real-time Payment Status Tracking**: Monitor all credit card transactions and ATM payment confirmations with instant notifications
+2. **Payment Method Analytics**: Track payment volume by method (credit card, ATM, CVS, barcode)
+3. **Failure Rate Monitoring**: Alert when refund operations or payment processing failures exceed thresholds
+4. **Recurring Payment Health**: For subscription-based 定期定額 services, monitor execution rates and success percentages
+5. **Settlement Reconciliation**: Verify payment amounts match cleared transactions and handle discrepancies
+
+---
+
+## Automated Debug Protocol | 自動化偵錯協議
+
+When developers encounter payment integration issues, an automated debug protocol helps systematically diagnose and resolve problems. This protocol includes diagnostic functions, CheckMacValue validation, and common error mapping.
+
+### Diagnosis Function
+
+```python
+def diagnose_payment_error(rtn_code: str, context: dict) -> dict:
+    """
+    Automated diagnosis function for payment errors.
+    Analyzes error codes and suggests fixes.
+
+    Args:
+        rtn_code: Response code from OMG payment API
+        context: Dictionary with request/response details
+
+    Returns:
+        Diagnosis report with recommended actions
+    """
+
+    ERROR_MAPPING = {
+        "1": {
+            "status": "Success",
+            "meaning": "Payment processed successfully",
+            "action": "Verify order in database"
+        },
+        "2": {
+            "status": "ATM Code Generated",
+            "meaning": "Virtual account number generated for ATM transfer",
+            "action": "Display virtual account to customer"
+        },
+        "10100073": {
+            "status": "CVS/BARCODE Code Generated",
+            "meaning": "Payment code generated for convenience store",
+            "action": "Display payment code to customer"
+        },
+        "10200047": {
+            "status": "Signature Verification Failed",
+            "meaning": "CheckMacValue validation failed",
+            "action": "Verify hash key, hash IV, parameter sorting, and .NET replacements"
+        },
+        "10200058": {
+            "status": "Duplicate Order Number",
+            "meaning": "MerchantTradeNo already exists",
+            "action": "Use unique order number with timestamp + random suffix"
+        },
+        "10200069": {
+            "status": "Invalid Amount",
+            "meaning": "Transaction amount format error",
+            "action": "Ensure TotalAmount is integer (no decimals), positive value"
+        },
+        "10200095": {
+            "status": "Order Cancelled",
+            "meaning": "Payment was explicitly cancelled",
+            "action": "Check cancellation reason or allow user to retry"
+        }
+    }
+
+    diagnosis = {
+        "rtn_code": rtn_code,
+        "timestamp": datetime.now().isoformat(),
+        "error_details": ERROR_MAPPING.get(rtn_code, {
+            "status": "Unknown",
+            "meaning": "Consult vendor backend",
+            "action": "Check vendor-stage.funpoint.com.tw error code database"
+        })
+    }
+
+    if rtn_code == "10200047":
+        diagnosis["checkmacvalue_validation"] = validate_checkmacvalue(context)
+
+    return diagnosis
+
+
+def validate_checkmacvalue(context: dict) -> dict:
+    """
+    Step-by-step CheckMacValue validator.
+    Identifies exactly where the signature calculation fails.
+    """
+    steps = []
+
+    # Step 1: Filter parameters
+    filtered = {k: v for k, v in context['params'].items() if k != 'CheckMacValue'}
+    steps.append({"step": 1, "action": "Filter out CheckMacValue parameter", "count": len(filtered)})
+
+    # Step 2: Sort alphabetically (case-insensitive)
+    sorted_keys = sorted(filtered.keys(), key=lambda k: k.lower())
+    steps.append({"step": 2, "action": "Sort keys case-insensitive", "keys": sorted_keys})
+
+    # Step 3: Build parameter string
+    param_str = "&".join(f"{k}={filtered[k]}" for k in sorted_keys)
+    steps.append({"step": 3, "action": "Join with &", "length": len(param_str)})
+
+    # Step 4: Add HashKey and HashIV
+    raw = f"HashKey={context['hash_key']}&{param_str}&HashIV={context['hash_iv']}"
+    steps.append({"step": 4, "action": "Wrap with HashKey and HashIV"})
+
+    # Step 5: URL encode
+    from urllib.parse import quote
+    encoded = quote(raw, safe="").lower()
+    steps.append({"step": 5, "action": "URL encode and lowercase"})
+
+    # Step 6: Apply .NET replacements
+    REPLACEMENTS = {"%2d": "-", "%5f": "_", "%2e": ".", "%21": "!", "%2a": "*", "%28": "(", "%29": ")"}
+    for old, new in REPLACEMENTS.items():
+        encoded = encoded.replace(old, new)
+    steps.append({"step": 6, "action": "Apply .NET replacements", "replacements": REPLACEMENTS})
+
+    # Step 7: SHA256 hash
+    import hashlib
+    hashed = hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
+    steps.append({"step": 7, "action": "SHA256 hash"})
+
+    # Step 8: Uppercase
+    steps.append({"step": 8, "action": "Convert to uppercase", "generated": hashed})
+
+    return {
+        "steps": steps,
+        "generated_value": hashed,
+        "expected_value": context.get('expected_checkmacvalue'),
+        "match": hashed == context.get('expected_checkmacvalue')
+    }
+```
+
+### Common Error → Fix Mapping
+
+| RtnCode | Issue | Root Cause | Fix |
+|---------|-------|-----------|-----|
+| 10200047 | CheckMacValue error | Wrong sorting order, missing .NET replacements, or incorrect hash key/IV | Verify parameter sorting (case-insensitive A-Z), ensure .NET replacements applied AFTER URL encoding, confirm hash key/IV values |
+| 10200058 | Duplicate MerchantTradeNo | Reusing order number | Generate unique order numbers: `prefix+timestamp+random` |
+| 10200069 | Invalid amount | Amount not integer or incorrect currency | Use NT$ integer values only, no decimals |
+| 10200095 | Order cancelled | Customer or merchant cancelled | Allow user to create new order with different MerchantTradeNo |
+| Connection timeout | API unreachable | Wrong base URL or network issue | Verify test URL uses `payment-stage.funpoint.com.tw`, production uses `payment.funpoint.com.tw` |
+| Missing callback | ReturnURL not called | Endpoint not public or wrong response | Use ngrok for local testing, respond with `1\|OK` plain text |
+
+---
+
 ## FAQ | 常見問題
 
 **Q: Who is this for? 適合誰?**

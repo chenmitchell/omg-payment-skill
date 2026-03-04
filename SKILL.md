@@ -1285,6 +1285,1169 @@ app.listen(8000, () => console.log('Server running on port 8000'));
 
 ---
 
+## Python SDK Wrapper | Python 完整封裝類
+
+This section provides a complete `OMGPaymentClient` class that simplifies integrating the Taiwan e-commerce payment gateway into your application. The SDK handles all 6 OMG payment APIs, manages test/production environment switching, and includes built-in retry logic with exponential backoff for reliability.
+
+以下提供完整的 `OMGPaymentClient` 類別，簡化 OMG 金流串接流程。SDK 涵蓋所有 6 個 API，自動環境切換，內含重試機制。
+
+```python
+import hashlib
+import hmac
+import requests
+import time
+import logging
+from typing import Dict, Any, Optional
+from urllib.parse import urlencode
+from datetime import datetime
+import json
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class OMGPaymentClient:
+    """
+    Complete OMG Payment Gateway (歐買尬金流) SDK wrapper for Taiwan e-commerce payment integration.
+    Supports credit card payments, ATM virtual accounts, convenience store payments, and recurring subscriptions.
+
+    台灣第三方支付 OMG 金流完整封裝 SDK，支持信用卡付款、ATM虛擬帳號、超商代碼繳款、定期定額扣款。
+    """
+
+    def __init__(self, merchant_id: str, hash_key: str, hash_iv: str, production: bool = False):
+        """
+        Initialize OMG Payment Client
+
+        Args:
+            merchant_id: Your merchant ID
+            hash_key: Your hash key for CheckMacValue
+            hash_iv: Your hash IV for CheckMacValue
+            production: Use production API (True) or test API (False)
+        """
+        self.merchant_id = merchant_id
+        self.hash_key = hash_key
+        self.hash_iv = hash_iv
+        self.production = production
+
+        self.base_url = "https://payment.funpoint.com.tw" if production else "https://payment-stage.funpoint.com.tw"
+        self.aio_checkout_url = f"{self.base_url}/Cashier/AioCheckOut/V5"
+        self.query_trade_info_url = f"{self.base_url}/Cashier/QueryTradeInfo/V5"
+        self.query_credit_card_period_url = f"{self.base_url}/Cashier/QueryCreditCardPeriodInfo"
+        self.credit_card_period_action_url = f"{self.base_url}/Cashier/CreditCardPeriodAction"
+        self.do_action_url = f"{self.base_url}/Cashier/DoAction"
+        self.query_trade_v2_url = f"{self.base_url}/Cashier/QueryTrade/V2"
+
+        self.max_retries = 3
+        self.retry_backoff_factor = 2
+
+        logger.info(f"OMGPaymentClient initialized (production={production}, merchant_id={merchant_id})")
+
+    def _calculate_check_mac_value(self, data: Dict[str, Any]) -> str:
+        """
+        Calculate CheckMacValue for payment API security (SHA256).
+
+        這是 OMG 金流串接的核心安全驗證機制，使用 SHA256 演算法。
+        """
+        # Sort parameters (case-insensitive)
+        sorted_params = sorted(data.items(), key=lambda x: x[0].lower())
+
+        # Build parameter string
+        param_str = '&'.join([f"{k}={v}" for k, v in sorted_params])
+
+        # Add HashIV at the beginning and HashKey at the end
+        mac_str = f"HashIV={self.hash_iv}&{param_str}&HashKey={self.hash_key}"
+
+        # SHA256 hash and uppercase
+        check_mac = hashlib.sha256(mac_str.encode('utf-8')).hexdigest().upper()
+
+        return check_mac
+
+    def _make_request(self, url: str, data: Dict[str, Any], max_retries: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Make HTTP request with retry logic and exponential backoff.
+        """
+        if max_retries is None:
+            max_retries = self.max_retries
+
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, data=data, timeout=10)
+                response.raise_for_status()
+
+                # Parse response
+                if 'json' in response.headers.get('content-type', ''):
+                    return response.json()
+                else:
+                    # Form-encoded or custom format
+                    return self._parse_response(response.text)
+
+            except requests.RequestException as e:
+                wait_time = self.retry_backoff_factor ** attempt
+                logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s...")
+
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Request failed after {max_retries} attempts")
+                    raise
+
+    def _parse_response(self, response_text: str) -> Dict[str, Any]:
+        """Parse various response formats from OMG APIs"""
+        result = {}
+        for item in response_text.split('&'):
+            if '=' in item:
+                key, value = item.split('=', 1)
+                result[key] = value
+        return result
+
+    def create_order(self,
+                    trade_no: str,
+                    amount: int,
+                    description: str,
+                    return_url: str,
+                    notify_url: str,
+                    client_back_url: str,
+                    payment_type: str = "aio",
+                    choose_payment: Optional[str] = None,
+                    items: Optional[list] = None,
+                    **kwargs) -> Dict[str, Any]:
+        """
+        Create a payment order using AioCheckOut/V5 API.
+
+        Supports credit card payments, ATM virtual accounts, and convenience store codes.
+        支持信用卡付款、ATM虛擬帳號、超商代碼繳款等多種付款方式。
+
+        Args:
+            trade_no: Unique merchant trade number
+            amount: Total amount (in TWD)
+            description: Order description
+            return_url: Customer return URL after payment
+            notify_url: Server notification URL
+            client_back_url: Return URL if customer cancels
+            payment_type: "aio" (default), "Credit" (credit card only), etc.
+            choose_payment: Specific payment method (e.g., "Credit", "ATM", "BARCODE")
+            items: List of items (optional details)
+            **kwargs: Additional parameters (CustomField1, PeriodAmount, etc.)
+
+        Returns:
+            Dict with RtnCode, RtnMsg, and payment form HTML or redirect URL
+        """
+        data = {
+            'MerchantID': self.merchant_id,
+            'MerchantTradeNo': trade_no,
+            'MerchantTradeDate': datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
+            'PaymentType': payment_type,
+            'TotalAmount': amount,
+            'TradeDesc': description,
+            'ItemName': items[0]['name'] if items else description,
+            'ReturnURL': return_url,
+            'NotifyURL': notify_url,
+            'ClientBackURL': client_back_url,
+            'ChoosePayment': choose_payment or 'ALL',
+            'EncryptType': 1,
+        }
+
+        # Add optional parameters
+        if kwargs:
+            data.update(kwargs)
+
+        # Calculate CheckMacValue
+        data['CheckMacValue'] = self._calculate_check_mac_value(data)
+
+        logger.info(f"Creating order: {trade_no}, amount: {amount}")
+
+        response = self._make_request(self.aio_checkout_url, data)
+        return response
+
+    def query_trade(self, trade_no: str) -> Dict[str, Any]:
+        """
+        Query payment transaction status using QueryTradeInfo/V5 API.
+
+        用 QueryTradeInfo/V5 查詢線上付款交易狀態。
+
+        Args:
+            trade_no: Merchant trade number
+
+        Returns:
+            Dict with transaction details (RtnCode, TradeStatus, PaymentType, etc.)
+        """
+        data = {
+            'MerchantID': self.merchant_id,
+            'MerchantTradeNo': trade_no,
+            'TimeStamp': int(time.time()),
+        }
+
+        data['CheckMacValue'] = self._calculate_check_mac_value(data)
+
+        logger.info(f"Querying trade: {trade_no}")
+
+        response = self._make_request(self.query_trade_info_url, data)
+        return response
+
+    def query_recurring(self, trade_no: str) -> Dict[str, Any]:
+        """
+        Query recurring/subscription payment status using QueryCreditCardPeriodInfo.
+
+        查詢定期定額扣款狀態，支持信用卡週期付款訂閱。
+
+        Args:
+            trade_no: Original merchant trade number
+
+        Returns:
+            Dict with recurring payment details
+        """
+        data = {
+            'MerchantID': self.merchant_id,
+            'MerchantTradeNo': trade_no,
+            'TimeStamp': int(time.time()),
+        }
+
+        data['CheckMacValue'] = self._calculate_check_mac_value(data)
+
+        logger.info(f"Querying recurring payment: {trade_no}")
+
+        response = self._make_request(self.query_credit_card_period_url, data)
+        return response
+
+    def cancel_recurring(self, trade_no: str, action: str = "C") -> Dict[str, Any]:
+        """
+        Cancel or suspend recurring subscription using CreditCardPeriodAction.
+
+        取消或暫停信用卡定期定額扣款訂閱。
+
+        Args:
+            trade_no: Original merchant trade number
+            action: "C" (Cancel), "R" (Resume), "E" (End contract), "N" (Change amount)
+
+        Returns:
+            Dict with operation result
+        """
+        data = {
+            'MerchantID': self.merchant_id,
+            'MerchantTradeNo': trade_no,
+            'TimeStamp': int(time.time()),
+            'Action': action,
+        }
+
+        data['CheckMacValue'] = self._calculate_check_mac_value(data)
+
+        logger.info(f"Recurring payment action: {trade_no}, action={action}")
+
+        response = self._make_request(self.credit_card_period_action_url, data)
+        return response
+
+    def do_action(self, trade_no: str, action: str, amount: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Perform transaction actions (Capture, Refund, Void, etc.) using DoAction API.
+
+        執行交易動作：取消授權 (C)、退款 (R)、取消退款 (E)、取消交易 (N)。
+
+        Args:
+            trade_no: Original merchant trade number
+            action: "C" (Cancel auth), "R" (Refund), "E" (Cancel refund), "N" (Void transaction)
+            amount: Amount for the action (required for Refund/Cancel Refund)
+
+        Returns:
+            Dict with action result
+        """
+        data = {
+            'MerchantID': self.merchant_id,
+            'MerchantTradeNo': trade_no,
+            'TimeStamp': int(time.time()),
+            'Action': action,
+        }
+
+        if amount is not None:
+            data['TotalAmount'] = amount
+
+        data['CheckMacValue'] = self._calculate_check_mac_value(data)
+
+        logger.info(f"DoAction: {trade_no}, action={action}")
+
+        response = self._make_request(self.do_action_url, data)
+        return response
+
+    def query_credit_detail(self, trade_no: str) -> Dict[str, Any]:
+        """
+        Query credit card transaction details using QueryTrade/V2 API.
+
+        用 QueryTrade/V2 查詢信用卡交易詳情（退款退刷資訊）。
+
+        Args:
+            trade_no: Merchant trade number
+
+        Returns:
+            Dict with detailed transaction info
+        """
+        data = {
+            'MerchantID': self.merchant_id,
+            'MerchantTradeNo': trade_no,
+            'TimeStamp': int(time.time()),
+        }
+
+        data['CheckMacValue'] = self._calculate_check_mac_value(data)
+
+        logger.info(f"Querying credit detail: {trade_no}")
+
+        response = self._make_request(self.query_trade_v2_url, data)
+        return response
+
+    def verify_notification(self, callback_data: Dict[str, str]) -> bool:
+        """
+        Verify CheckMacValue from payment notification callback.
+
+        驗證支付通知回調的 CheckMacValue，確保資料完整性。
+
+        Args:
+            callback_data: All parameters from OMG callback (including CheckMacValue)
+
+        Returns:
+            True if verification passes, False otherwise
+        """
+        received_mac = callback_data.get('CheckMacValue', '')
+
+        # Create copy without CheckMacValue
+        verify_data = {k: v for k, v in callback_data.items() if k != 'CheckMacValue'}
+
+        # Calculate expected CheckMacValue
+        expected_mac = self._calculate_check_mac_value(verify_data)
+
+        is_valid = received_mac.upper() == expected_mac.upper()
+
+        if is_valid:
+            logger.info(f"Notification verified: {verify_data.get('MerchantTradeNo')}")
+        else:
+            logger.error(f"Notification verification failed: {verify_data.get('MerchantTradeNo')}")
+
+        return is_valid
+
+
+# Example usage:
+if __name__ == "__main__":
+    # Initialize client for test environment
+    client = OMGPaymentClient(
+        merchant_id="1000031",
+        hash_key="265fIDjIvesceXWM",
+        hash_iv="pOOvhGd1V2pJbjfX",
+        production=False
+    )
+
+    # Create order
+    result = client.create_order(
+        trade_no="TEST2024030401",
+        amount=1000,
+        description="Test Payment Order",
+        return_url="https://example.com/return",
+        notify_url="https://example.com/notify",
+        client_back_url="https://example.com/cancel",
+        choose_payment="Credit"
+    )
+    print(f"Order created: {result}")
+
+    # Query trade status
+    # status = client.query_trade("TEST2024030401")
+    # print(f"Trade status: {status}")
+
+    # Verify callback
+    # callback = {...callback params from OMG...}
+    # if client.verify_notification(callback):
+    #     print("Payment confirmed!")
+```
+
+---
+
+## Admin Dashboard Generation | 管理後台生成指南
+
+When building an e-commerce admin dashboard for OMG payment gateway integration, you need several key features to manage Taiwan payment transactions, monitor payment methods, and handle refunds efficiently.
+
+建立 OMG 金流管理後台時，需要完整的交易管理、支付方式分析、退款管理等功能。
+
+### Admin Dashboard Features Required | 管理後台必需功能
+
+1. **Transaction List with Search/Filter** - Display all online payment transactions with search by trade number, date range, payment status, payment method
+2. **Transaction Detail View** - Show full transaction info: amount, payment method (credit card vs ATM vs convenience store), timestamps, refund history
+3. **Revenue Analytics** - Daily/monthly revenue charts, transaction count trends, average transaction value
+4. **Payment Method Distribution** - Pie chart showing credit card vs ATM virtual account vs convenience store code distribution for financial analytics
+5. **Refund Management** - Process refunds (退款退刷), track refund status, generate refund reports
+6. **Recurring Payment Management** - For subscription-based payment models, manage active subscriptions, suspend/resume periodic deductions
+7. **Real-time Notification Log** - Monitor webhook delivery status from OMG payment APIs, view callback logs
+8. **Settlement Reports** - Track settlement cycles, view deposited amounts, reconcile with OMG backend
+
+### Instruction for AI | AI 指令範本
+
+When a user asks you to build an admin dashboard for OMG payment gateway integration, follow this template:
+
+```
+用戶要求：建立 OMG 金流管理後台
+
+AI 應該做：
+1. 使用 React/Next.js 創建應用
+2. 實現上述 8 個功能
+3. 串接 OMG Payment API (QueryTradeInfo/V5, QueryCreditCardPeriodInfo, DoAction 等)
+4. 使用 Python/Node.js 後端處理 API 請求和 CheckMacValue 驗證
+5. 使用資料庫 (PostgreSQL/MongoDB) 存儲交易快取
+6. 實現即時更新和錯誤通知
+```
+
+### React Dashboard Component Example | React 儀表板元件範例
+
+```jsx
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const OMGPaymentDashboard = () => {
+  const [transactions, setTransactions] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
+  const [filterMethod, setFilterMethod] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+
+  useEffect(() => {
+    fetchTransactions();
+    fetchRevenueData();
+    fetchPaymentMethods();
+  }, [filterPaymentStatus, filterMethod, dateRange]);
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/transactions', {
+        params: {
+          status: filterPaymentStatus,
+          method: filterMethod,
+          startDate: dateRange.start,
+          endDate: dateRange.end,
+        },
+      });
+      setTransactions(response.data);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+    }
+    setLoading(false);
+  };
+
+  const fetchRevenueData = async () => {
+    try {
+      const response = await axios.get('/api/revenue-analytics');
+      setRevenueData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch revenue data:', error);
+    }
+  };
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await axios.get('/api/payment-methods-distribution');
+      setPaymentMethods(response.data);
+    } catch (error) {
+      console.error('Failed to fetch payment methods:', error);
+    }
+  };
+
+  const handleRefund = async (tradeNo, amount) => {
+    if (window.confirm(`確認退款 ${amount} 元？`)) {
+      try {
+        await axios.post('/api/refund', { tradeNo, amount });
+        alert('退款請求已提交');
+        fetchTransactions();
+      } catch (error) {
+        alert(`退款失敗: ${error.message}`);
+      }
+    }
+  };
+
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c'];
+
+  return (
+    <div className="dashboard-container">
+      <h1>OMG Payment Admin Dashboard | OMG 金流管理後台</h1>
+
+      {/* Filter Section */}
+      <div className="filter-section">
+        <input
+          type="date"
+          value={dateRange.start}
+          onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+          placeholder="開始日期"
+        />
+        <input
+          type="date"
+          value={dateRange.end}
+          onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+          placeholder="結束日期"
+        />
+        <select value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
+          <option value="all">All Status</option>
+          <option value="1">Success (成功)</option>
+          <option value="0">Pending (待驗證)</option>
+        </select>
+        <select value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}>
+          <option value="all">All Methods</option>
+          <option value="Credit">Credit Card (信用卡)</option>
+          <option value="ATM">ATM Virtual Account (ATM虛擬帳號)</option>
+          <option value="BARCODE">Convenience Store (超商代碼)</option>
+        </select>
+      </div>
+
+      {/* Revenue Chart */}
+      <div className="chart-section">
+        <h2>Daily Revenue | 日營收</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={revenueData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="amount" stroke="#8884d8" name="Amount (金額)" />
+            <Line type="monotone" dataKey="transactions" stroke="#82ca9d" name="Transactions (交易數)" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Payment Method Distribution */}
+      <div className="chart-section">
+        <h2>Payment Method Distribution | 付款方式分布</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie data={paymentMethods} cx="50%" cy="50%" label dataKey="value">
+              {paymentMethods.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Transactions Table */}
+      <div className="table-section">
+        <h2>Recent Transactions | 最近交易</h2>
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <table className="transactions-table">
+            <thead>
+              <tr>
+                <th>Trade No (交易號)</th>
+                <th>Amount (金額)</th>
+                <th>Method (付款方式)</th>
+                <th>Status (狀態)</th>
+                <th>Date (日期)</th>
+                <th>Action (操作)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((tx) => (
+                <tr key={tx.tradeNo}>
+                  <td>{tx.tradeNo}</td>
+                  <td>TWD {tx.amount}</td>
+                  <td>{tx.paymentMethod}</td>
+                  <td>{tx.status === '1' ? 'Success ✓' : 'Pending'}</td>
+                  <td>{new Date(tx.tradeDate).toLocaleString('zh-TW')}</td>
+                  <td>
+                    <button onClick={() => handleRefund(tx.tradeNo, tx.amount)}>
+                      Refund (退款)
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default OMGPaymentDashboard;
+```
+
+---
+
+## Integration Monitoring | 串接監控
+
+Monitoring your OMG payment gateway integration ensures payment reliability and provides early warning for potential issues. This section provides monitoring strategies, health checks, and alert rules for production environments handling Taiwan e-commerce transactions.
+
+監控 OMG 金流串接狀態對確保付款可靠性至關重要。以下提供監控策略、健康檢查、告警機制。
+
+### Health Check Endpoint | 健康檢查端點
+
+```python
+from datetime import datetime, timedelta
+import requests
+import json
+
+class OMGHealthMonitor:
+    """
+    Monitor OMG payment gateway health and integration status.
+
+    監控 OMG 金流健康狀態和串接完整性。
+    """
+
+    def __init__(self, merchant_id: str, hash_key: str, hash_iv: str):
+        self.merchant_id = merchant_id
+        self.hash_key = hash_key
+        self.hash_iv = hash_iv
+        self.test_url = "https://payment-stage.funpoint.com.tw"
+        self.prod_url = "https://payment.funpoint.com.tw"
+
+    def check_api_connectivity(self, production: bool = False) -> Dict[str, Any]:
+        """
+        Ping OMG test/production API to verify connectivity.
+
+        檢查 API 連線狀態。
+        """
+        url = self.prod_url if production else self.test_url
+
+        try:
+            response = requests.get(url, timeout=5)
+            return {
+                'status': 'healthy' if response.status_code == 200 else 'degraded',
+                'response_time_ms': response.elapsed.total_seconds() * 1000,
+                'timestamp': datetime.now().isoformat(),
+            }
+        except requests.RequestException as e:
+            return {
+                'status': 'unhealthy',
+                'error': str(e),
+                'timestamp': datetime.now().isoformat(),
+            }
+
+    def calculate_transaction_success_rate(self, transactions: list) -> float:
+        """
+        Calculate success rate from transaction list.
+
+        計算交易成功率。
+        """
+        if not transactions:
+            return 100.0
+
+        successful = sum(1 for tx in transactions if tx.get('status') == '1')
+        return (successful / len(transactions)) * 100
+
+    def check_success_rate(self, db_connection) -> Dict[str, Any]:
+        """
+        Check transaction success rate for last 1 hour.
+
+        檢查過去 1 小時的交易成功率。
+        """
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+
+        # Query transactions from your database
+        transactions = db_connection.query(
+            f"SELECT * FROM transactions WHERE created_at > '{one_hour_ago}'"
+        )
+
+        success_rate = self.calculate_transaction_success_rate(transactions)
+
+        return {
+            'success_rate': success_rate,
+            'total_transactions': len(transactions),
+            'failed_transactions': len(transactions) - sum(1 for tx in transactions if tx.get('status') == '1'),
+            'threshold': 95.0,
+            'alert': success_rate < 95.0,
+            'timestamp': datetime.now().isoformat(),
+        }
+
+    def check_webhook_delivery(self, db_connection) -> Dict[str, Any]:
+        """
+        Monitor webhook delivery status from OMG callback notifications.
+
+        監控 OMG 回調通知狀態。
+        """
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+
+        # Query webhook logs
+        callbacks = db_connection.query(
+            f"SELECT * FROM webhook_logs WHERE created_at > '{one_hour_ago}'"
+        )
+
+        successful_callbacks = sum(1 for cb in callbacks if cb.get('verified'))
+        failed_callbacks = len(callbacks) - successful_callbacks
+
+        return {
+            'total_callbacks': len(callbacks),
+            'successful': successful_callbacks,
+            'failed': failed_callbacks,
+            'success_rate': (successful_callbacks / len(callbacks) * 100) if callbacks else 100,
+            'timestamp': datetime.now().isoformat(),
+        }
+
+    def generate_health_report(self, db_connection, production: bool = False) -> Dict[str, Any]:
+        """
+        Generate comprehensive health report for OMG payment integration.
+
+        產生完整的健康檢查報告。
+        """
+        api_health = self.check_api_connectivity(production=production)
+        success_rate = self.check_success_rate(db_connection)
+        webhook_health = self.check_webhook_delivery(db_connection)
+
+        # Determine overall health
+        overall_health = 'healthy'
+        if api_health['status'] != 'healthy' or success_rate['alert'] or webhook_health['success_rate'] < 95:
+            overall_health = 'unhealthy'
+        elif api_health['status'] == 'degraded':
+            overall_health = 'degraded'
+
+        return {
+            'overall_status': overall_health,
+            'api_connectivity': api_health,
+            'transaction_success': success_rate,
+            'webhook_delivery': webhook_health,
+            'timestamp': datetime.now().isoformat(),
+            'environment': 'production' if production else 'test',
+        }
+
+# Example: Flask monitoring endpoint
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+monitor = OMGHealthMonitor("1000031", "265fIDjIvesceXWM", "pOOvhGd1V2pJbjfX")
+
+@app.route('/health/omg-payment', methods=['GET'])
+def omg_payment_health():
+    """
+    Health check endpoint for OMG payment integration monitoring.
+
+    用於監控系統的 OMG 金流健康檢查端點。
+    """
+    # Get database connection (pseudocode)
+    db = get_db_connection()
+
+    report = monitor.generate_health_report(db, production=False)
+
+    # Return appropriate HTTP status based on health
+    status_code = 200 if report['overall_status'] == 'healthy' else 503
+
+    return jsonify(report), status_code
+```
+
+### Alert Rules and Thresholds | 告警規則和閾值
+
+```python
+class AlertRule:
+    """
+    Define alert rules for OMG payment monitoring.
+
+    定義 OMG 金流監控告警規則。
+    """
+
+    RULES = {
+        'success_rate_critical': {
+            'metric': 'transaction_success_rate',
+            'threshold': 90,
+            'condition': '<',
+            'severity': 'critical',
+            'message': 'Transaction success rate dropped below 90%',
+        },
+        'success_rate_warning': {
+            'metric': 'transaction_success_rate',
+            'threshold': 95,
+            'condition': '<',
+            'severity': 'warning',
+            'message': 'Transaction success rate dropped below 95%',
+        },
+        'api_response_time': {
+            'metric': 'api_response_time_ms',
+            'threshold': 5000,
+            'condition': '>',
+            'severity': 'warning',
+            'message': 'API response time exceeded 5 seconds',
+        },
+        'webhook_delivery_failure': {
+            'metric': 'webhook_failure_rate',
+            'threshold': 5,
+            'condition': '>',
+            'severity': 'warning',
+            'message': 'Webhook delivery failure rate exceeded 5%',
+        },
+        'api_connectivity': {
+            'metric': 'api_status',
+            'threshold': 'healthy',
+            'condition': '!=',
+            'severity': 'critical',
+            'message': 'OMG API connectivity issue detected',
+        },
+    }
+
+    @staticmethod
+    def evaluate_alert(metric_name: str, metric_value: float) -> Optional[str]:
+        """
+        Check if metric triggers any alert rule.
+
+        評估指標是否觸發告警規則。
+        """
+        rule = AlertRule.RULES.get(metric_name)
+
+        if not rule:
+            return None
+
+        threshold = rule['threshold']
+        condition = rule['condition']
+
+        triggered = False
+        if condition == '<':
+            triggered = metric_value < threshold
+        elif condition == '>':
+            triggered = metric_value > threshold
+        elif condition == '!=':
+            triggered = metric_value != threshold
+
+        return rule['message'] if triggered else None
+```
+
+### Prometheus Metrics Example | Prometheus 指標範例
+
+```python
+from prometheus_client import Counter, Gauge, Histogram
+
+# Define metrics for OMG payment integration
+omg_transactions_total = Counter(
+    'omg_transactions_total',
+    'Total OMG payment transactions',
+    ['status', 'payment_method']
+)
+
+omg_transaction_amount = Gauge(
+    'omg_transaction_amount_twd',
+    'Total transaction amount in TWD',
+    ['payment_method']
+)
+
+omg_api_response_time = Histogram(
+    'omg_api_response_time_seconds',
+    'OMG API response time',
+    ['api_name']
+)
+
+omg_webhook_deliveries = Counter(
+    'omg_webhook_deliveries_total',
+    'OMG webhook delivery attempts',
+    ['status']
+)
+
+# Example usage
+def record_transaction(amount: int, payment_method: str, success: bool):
+    """Record transaction metrics"""
+    status = 'success' if success else 'failed'
+    omg_transactions_total.labels(status=status, payment_method=payment_method).inc()
+    omg_transaction_amount.labels(payment_method=payment_method).set(amount)
+```
+
+---
+
+## Automated Error Diagnosis | 自動錯誤診斷
+
+When integrating OMG payment gateway for Taiwan e-commerce platforms, developers often encounter various error codes, CheckMacValue validation failures, and network issues. This section provides automated diagnostic tools to quickly identify and resolve problems.
+
+在整合 OMG 金流時，開發者常遇到各種錯誤碼、CheckMacValue 驗證失敗、網路連線問題。本節提供自動診斷工具快速識別和解決問題。
+
+```python
+import re
+import hashlib
+import socket
+from typing import Tuple, Dict, Any
+from datetime import datetime
+
+class ErrorDiagnosis:
+    """
+    Automated error diagnosis for OMG payment gateway integration.
+
+    OMG 金流串接自動錯誤診斷工具。
+    """
+
+    # Error code mapping with solutions
+    ERROR_CODES = {
+        '0': {
+            'message': 'System error',
+            'cause': 'Unknown error from OMG system',
+            'solutions': [
+                'Check OMG status page: https://www.funpoint.com.tw/',
+                'Verify API endpoint URL is correct',
+                'Enable detailed logging to see server response',
+            ]
+        },
+        '1': {
+            'message': 'Success',
+            'cause': 'Transaction completed successfully',
+            'solutions': ['No action needed']
+        },
+        '-1': {
+            'message': 'Merchant not found',
+            'cause': 'MerchantID does not exist or is inactive',
+            'solutions': [
+                'Verify MerchantID is correct',
+                'Confirm merchant account is active in OMG backend',
+                'Check if using test MerchantID in production',
+            ]
+        },
+        '-2': {
+            'message': 'Parameter error',
+            'cause': 'Missing or invalid parameters in request',
+            'solutions': [
+                'Verify all required parameters are provided',
+                'Check parameter data types and formats',
+                'Ensure date format is YYYY/MM/DD HH:MM:SS',
+                'Verify amount is integer (no decimals)',
+            ]
+        },
+        '-3': {
+            'message': 'Invalid CheckMacValue',
+            'cause': 'CheckMacValue validation failed - most common error',
+            'solutions': [
+                'Run diagnostic: diagnose_check_mac_value()',
+                'Verify HashKey and HashIV are correct',
+                'Check parameter sort order (case-insensitive)',
+                'Ensure URL encoding is not applied',
+                'For .NET: verify character replacement is done',
+            ]
+        },
+        '-4': {
+            'message': 'Insufficient payment amount',
+            'cause': 'Transaction amount too small or too large',
+            'solutions': [
+                'Verify amount meets minimum (usually 1 TWD)',
+                'Check amount does not exceed maximum',
+                'Ensure amount is positive integer',
+            ]
+        },
+        '10100001': {
+            'message': 'Unsupported currency',
+            'cause': 'Only TWD is supported',
+            'solutions': [
+                'Change currency to TWD only',
+            ]
+        },
+        '10100002': {
+            'message': 'Invalid item',
+            'cause': 'Item information is invalid',
+            'solutions': [
+                'Verify ItemName is provided',
+                'Check ItemName does not contain invalid characters',
+            ]
+        },
+    }
+
+    @staticmethod
+    def diagnose_error(rtn_code: str) -> Dict[str, Any]:
+        """
+        Diagnose error from OMG RtnCode.
+
+        診斷 OMG 錯誤碼含義和解決方案。
+
+        Args:
+            rtn_code: RtnCode from OMG API response
+
+        Returns:
+            Dict with error details and solutions
+        """
+        error_info = ErrorDiagnosis.ERROR_CODES.get(rtn_code, {
+            'message': 'Unknown error code',
+            'cause': f'RtnCode {rtn_code} not found in documentation',
+            'solutions': [
+                f'Search OMG documentation for code {rtn_code}',
+                'Enable debug logging to see full response',
+            ]
+        })
+
+        return {
+            'error_code': rtn_code,
+            'message': error_info['message'],
+            'cause': error_info['cause'],
+            'solutions': error_info['solutions'],
+            'timestamp': datetime.now().isoformat(),
+        }
+
+    @staticmethod
+    def diagnose_check_mac_value(
+        data: Dict[str, str],
+        received_mac: str,
+        hash_key: str,
+        hash_iv: str
+    ) -> Dict[str, Any]:
+        """
+        Step-by-step diagnosis for CheckMacValue validation failure.
+
+        逐步診斷 CheckMacValue 驗證失敗的原因。
+
+        Args:
+            data: Request parameters (without CheckMacValue)
+            received_mac: Received CheckMacValue from response
+            hash_key: Your HashKey
+            hash_iv: Your HashIV
+
+        Returns:
+            Diagnostic results with expected vs actual values
+        """
+        diagnosis = {
+            'step_1_parameters': {},
+            'step_2_sort': [],
+            'step_3_parameter_string': '',
+            'step_4_mac_string': '',
+            'step_5_calculated_mac': '',
+            'step_6_comparison': {},
+        }
+
+        # Step 1: Verify parameters
+        diagnosis['step_1_parameters'] = {
+            'count': len(data),
+            'keys': list(data.keys()),
+            'has_check_mac_value': 'CheckMacValue' in data,
+        }
+
+        # Step 2: Sort parameters (case-insensitive)
+        sorted_params = sorted(data.items(), key=lambda x: x[0].lower())
+        diagnosis['step_2_sort'] = sorted_params
+
+        # Step 3: Build parameter string
+        param_str = '&'.join([f"{k}={v}" for k, v in sorted_params])
+        diagnosis['step_3_parameter_string'] = param_str
+
+        # Step 4: Build MAC string with HashIV and HashKey
+        mac_str = f"HashIV={hash_iv}&{param_str}&HashKey={hash_key}"
+        diagnosis['step_4_mac_string'] = mac_str
+
+        # Step 5: Calculate SHA256
+        calculated_mac = hashlib.sha256(mac_str.encode('utf-8')).hexdigest().upper()
+        diagnosis['step_5_calculated_mac'] = calculated_mac
+
+        # Step 6: Compare
+        is_match = calculated_mac.upper() == received_mac.upper()
+        diagnosis['step_6_comparison'] = {
+            'expected': calculated_mac,
+            'received': received_mac.upper(),
+            'match': is_match,
+        }
+
+        if not is_match:
+            diagnosis['recommendation'] = 'CheckMacValue mismatch detected. See steps 1-5 to identify differences.'
+
+        return diagnosis
+
+    @staticmethod
+    def check_network_connectivity(hostname: str = "payment.funpoint.com.tw", port: int = 443) -> Dict[str, Any]:
+        """
+        Check network connectivity to OMG servers.
+
+        檢查到 OMG 伺服器的網路連線。
+
+        Args:
+            hostname: OMG domain (default: production)
+            port: HTTPS port (default: 443)
+
+        Returns:
+            Connectivity test results
+        """
+        try:
+            sock = socket.create_connection((hostname, port), timeout=5)
+            sock.close()
+
+            return {
+                'hostname': hostname,
+                'port': port,
+                'connectivity': 'success',
+                'message': 'Successfully connected to OMG server',
+                'timestamp': datetime.now().isoformat(),
+            }
+        except socket.timeout:
+            return {
+                'hostname': hostname,
+                'port': port,
+                'connectivity': 'timeout',
+                'message': 'Connection timeout - network may be slow or blocked',
+                'solutions': [
+                    'Check firewall rules',
+                    'Verify you can ping the server',
+                    'Check network connectivity',
+                    'Try from different network',
+                ],
+                'timestamp': datetime.now().isoformat(),
+            }
+        except socket.error as e:
+            return {
+                'hostname': hostname,
+                'port': port,
+                'connectivity': 'failed',
+                'error': str(e),
+                'solutions': [
+                    'Verify hostname is correct',
+                    'Check firewall/proxy settings',
+                    'Ensure port 443 is open',
+                    'Try from command line: openssl s_client -connect ' + hostname,
+                ],
+                'timestamp': datetime.now().isoformat(),
+            }
+
+    @staticmethod
+    def check_timestamp_sync() -> Dict[str, Any]:
+        """
+        Check system time synchronization.
+
+        檢查系統時間同步狀態。某些 OMG API 對時間敏感。
+
+        Returns:
+            System time vs NTP server time
+        """
+        import ntplib
+
+        try:
+            ntp_client = ntplib.NTPClient()
+            response = ntp_client.request('pool.ntp.org', version=3)
+
+            local_time = datetime.now().timestamp()
+            ntp_time = response.tx_time
+            time_diff = abs(local_time - ntp_time)
+
+            return {
+                'local_time': datetime.fromtimestamp(local_time).isoformat(),
+                'ntp_time': datetime.fromtimestamp(ntp_time).isoformat(),
+                'time_difference_seconds': time_diff,
+                'sync_status': 'synced' if time_diff < 5 else 'out_of_sync',
+                'message': 'Time is in sync' if time_diff < 5 else 'System time is out of sync - this may cause API errors',
+                'timestamp': datetime.now().isoformat(),
+            }
+        except Exception as e:
+            return {
+                'sync_status': 'unknown',
+                'error': str(e),
+                'message': 'Could not verify time sync - ensure system time is correct',
+            }
+
+
+# Example usage
+if __name__ == "__main__":
+    # Diagnose error code
+    error_result = ErrorDiagnosis.diagnose_error('-3')
+    print(f"Error diagnosis: {error_result}")
+
+    # Diagnose CheckMacValue
+    test_data = {
+        'MerchantID': '1000031',
+        'MerchantTradeNo': 'TEST123',
+        'TotalAmount': '1000',
+    }
+
+    mac_diagnosis = ErrorDiagnosis.diagnose_check_mac_value(
+        test_data,
+        'RECEIVED_MAC_VALUE',
+        '265fIDjIvesceXWM',
+        'pOOvhGd1V2pJbjfX'
+    )
+    print(f"CheckMacValue diagnosis: {mac_diagnosis}")
+
+    # Check connectivity
+    connectivity = ErrorDiagnosis.check_network_connectivity()
+    print(f"Connectivity: {connectivity}")
+```
+
+---
+
 ## FAQ | 常見問題
 
 ### Q: 這份 Skill 適合誰使用？ Who is this Skill for?
