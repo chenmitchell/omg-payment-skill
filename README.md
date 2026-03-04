@@ -130,6 +130,7 @@ omg-payment-skill/
 ├── SKILL.md                    # Claude Skill 主體（Claude Code / Cowork 用）
 ├── SKILL_OPENAI.md             # OpenAI Skill 主體（ChatGPT / OpenAI 用）
 ├── LICENSE                     # MIT License
+├── .gitignore                  # Git 忽略規則
 └── examples/
     └── fastapi_example.py      # FastAPI 完整串接範例（涵蓋所有 API）
 ```
@@ -259,11 +260,16 @@ omg-payment-skill/
 ├── SKILL.md                    # Claude Skill body (for Claude Code / Cowork)
 ├── SKILL_OPENAI.md             # OpenAI Skill body (for ChatGPT / OpenAI)
 ├── LICENSE                     # MIT License
+├── .gitignore                  # Git ignore rules
 └── examples/
     └── fastapi_example.py      # Complete FastAPI integration example (all APIs)
 ```
 
 ---
+
+## 相關主題 | Related Topics
+
+台灣金流串接、歐買尬金流、第三方支付、OMG Payment、線上付款、信用卡付款、ATM 轉帳付款、超商代碼繳費、超商條碼繳費、定期定額扣款、訂閱制付款、電商金流整合、金流 API、Payment Gateway Taiwan、Credit Card Payment、Recurring Payment、E-commerce Payment Integration、AI Skill、Claude Code Skill、ChatGPT Custom Instructions、FastAPI Payment、Python 金流串接、Node.js 金流串接、PHP 金流串接、CheckMacValue、SHA256 驗證、付款結果通知、Webhook 回調、付款閘道、線上刷卡、分期付款、AFTEE 先享後付
 
 ## 授權 | License
 
