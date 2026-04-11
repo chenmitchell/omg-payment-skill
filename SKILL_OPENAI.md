@@ -461,7 +461,7 @@ This is the **most critical** part. Must be 100% correct.
 
 ```python
 import hashlib
-from urllib.parse import quote
+from urllib.parse import quote_plus
 
 DOTNET_REPLACEMENTS = {
     "%2d": "-", "%5f": "_", "%2e": ".",
@@ -473,17 +473,44 @@ def generate_check_mac_value(params: dict, hash_key: str, hash_iv: str) -> str:
     sorted_keys = sorted(filtered.keys(), key=lambda k: k.lower())
     param_str = "&".join(f"{k}={filtered[k]}" for k in sorted_keys)
     raw = f"HashKey={hash_key}&{param_str}&HashIV={hash_iv}"
-    encoded = quote(raw, safe="").lower()
+    # CRITICAL: quote_plus encodes space as "+" to match .NET HttpUtility.UrlEncode.
+    # quote() emits "%20" which DOES NOT match .NET and will fail CheckMacValue
+    # because MerchantTradeDate (yyyy/MM/dd HH:mm:ss) always contains a space.
+    encoded = quote_plus(raw, safe="").lower()
     for old, new in DOTNET_REPLACEMENTS.items():
         encoded = encoded.replace(old, new)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
+
+
+if __name__ == "__main__":
+    # Official OMG test vector
+    _test_params = {
+        "MerchantID": "2000132",
+        "MerchantTradeNo": "funpoint20130312153023",
+        "MerchantTradeDate": "2013/03/12 15:30:23",
+        "PaymentType": "aio",
+        "TotalAmount": "1000",
+        "TradeDesc": "促銷方案",
+        "ItemName": "Apple iphone 7 手機殼",
+        "ReturnURL": "https://www.funpoint.com.tw/receive.php",
+        "ChoosePayment": "ALL",
+        "EncryptType": "1",
+    }
+    _expected = "AA5842FDA7E55ACEB7118D6353E9822CA6D6FF09A0D1FC129A879DD5CAF93266"
+    _got = generate_check_mac_value(_test_params, "5294y06JbISpM5x9", "v77hoKGq4kWxNNIS")
+    assert _got == _expected, f"CheckMacValue self-test failed: got {_got}"
+    print("CheckMacValue self-test passed.")
 ```
 
 ### Node.js Implementation
 
 ```javascript
 const crypto = require('crypto');
+// CRITICAL: '%20': '+' is required because encodeURIComponent emits %20 for
+// spaces, but .NET HttpUtility.UrlEncode emits '+'. MerchantTradeDate always
+// contains a space, so this replacement is mandatory.
 const DOTNET_REPLACEMENTS = {
+  '%20': '+',
   '%2d': '-', '%5f': '_', '%2e': '.',
   '%21': '!', '%2a': '*', '%28': '(', '%29': ')',
 };
@@ -662,6 +689,7 @@ const CONFIG = {
 };
 
 const DOTNET_REPLACEMENTS = {
+  '%20': '+',
   '%2d': '-', '%5f': '_', '%2e': '.', '%21': '!', '%2a': '*', '%28': '(', '%29': ')',
 };
 
@@ -801,7 +829,7 @@ For seamless Taiwan e-commerce integration with payment APIs, we provide a produ
 import hashlib
 import logging
 from typing import Dict, Optional, Any
-from urllib.parse import quote
+from urllib.parse import quote_plus
 import requests
 from datetime import datetime
 
@@ -878,7 +906,8 @@ class OMGPaymentClient:
         sorted_keys = sorted(filtered.keys(), key=lambda k: k.lower())
         param_str = "&".join(f"{k}={filtered[k]}" for k in sorted_keys)
         raw = f"HashKey={self.hash_key}&{param_str}&HashIV={self.hash_iv}"
-        encoded = quote(raw, safe="").lower()
+        # CRITICAL: use quote_plus (space → "+") to match .NET HttpUtility.UrlEncode.
+        encoded = quote_plus(raw, safe="").lower()
 
         for old, new in self.DOTNET_REPLACEMENTS.items():
             encoded = encoded.replace(old, new)
@@ -1378,9 +1407,9 @@ def validate_checkmacvalue(context: dict) -> dict:
     raw = f"HashKey={context['hash_key']}&{param_str}&HashIV={context['hash_iv']}"
     steps.append({"step": 4, "action": "Wrap with HashKey and HashIV"})
 
-    # Step 5: URL encode
-    from urllib.parse import quote
-    encoded = quote(raw, safe="").lower()
+    # Step 5: URL encode (must use quote_plus so space → "+" matches .NET)
+    from urllib.parse import quote_plus
+    encoded = quote_plus(raw, safe="").lower()
     steps.append({"step": 5, "action": "URL encode and lowercase"})
 
     # Step 6: Apply .NET replacements

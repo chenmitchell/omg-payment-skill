@@ -21,7 +21,7 @@ license: MIT
 | **Company (中文)** | **茂為歐買尬數位科技股份有限公司** |
 | **Company (English)** | **MacroWell OMG Digital Entertainment Co., Ltd.** |
 | **Country** | **Taiwan (台灣)** |
-| **API Document Version** | V 1.4.9 (2025-11) |
+| **API Document Version** | V 1.5.0 (2026-03) |
 | **API Version** | AioCheckOut V5 |
 | **Production URL** | `https://payment.funpoint.com.tw/Cashier/AioCheckOut/V5` |
 | **Test/Staging URL** | `https://payment-stage.funpoint.com.tw/Cashier/AioCheckOut/V5` |
@@ -133,9 +133,9 @@ license: MIT
 | PaymentType | String | 20 | Fixed: `aio` 固定填 `aio` |
 | TotalAmount | Int | — | Amount in NT$ (integer, no decimals) 交易金額（整數，無小數） |
 | TradeDesc | String | 200 | Trade description 交易描述 |
-| ItemName | String | 400 | Item name (use `#` to separate multiple items) 商品名稱（多項用 `#` 分隔） |
+| ItemName | String | 200 | Item name (use `#` to separate multiple items, max 60 Chinese / 120 alphanumeric chars; system auto-truncates) 商品名稱（多項用 `#` 分隔，中文60字或英數120字內，超過自動截斷） |
 | ReturnURL | String | 200 | Server POST notification URL 伺服器端通知網址 |
-| ChoosePayment | String | 20 | Payment method 付款方式: `Credit`, `ATM`, `CVS`, `BARCODE`, `AFTEE`, `ALL` |
+| ChoosePayment | String | 20 | Payment method 付款方式: `Credit`, `ATM`, `CVS`, `AFTEE`, `BarcodeATM`, `ALL` (legacy: `BARCODE`) |
 | CheckMacValue | String | 64 | SHA256 verification code 檢查碼 |
 | EncryptType | Int | 1 | Fixed: `1` (SHA256) |
 
@@ -158,19 +158,19 @@ license: MIT
 | CustomField3 | String | 50 | Custom field 3 自訂欄位 3 |
 | CustomField4 | String | 50 | Custom field 4 自訂欄位 4 |
 | Language | String | 3 | Language 語系: `ENG`, `KOR`, `JPN`, `CHI` (default 預設 CHI) |
-| RiskMerchantMemberID | String | 50 | Risk management member ID 風險管理用 |
+| RiskMerchantMemberID | String | 100 | Risk management member ID 風控監測會員識別碼（申請風險監控機制時必填，目前僅 ATM 付款支援） |
 | DeviceSource | String | 10 | Device source 裝置來源 (leave blank 留空即可) |
 
 ### ATM Specific Parameters | ATM 專用參數
 
 | Parameter 參數 | Type 型態 | Description 說明 |
 |--------------|---------|----------------|
-| ExpireDate | Int | ATM expiry days (1-60, default 3) ATM 繳費期限天數 |
-| ExpireMinute | Int | ATM expiry minutes (10-1440, default 0=use days) 繳費期限分鐘數 |
-| PaymentInfoURL | String | Payment info notification URL 取號結果通知網址 |
-| ClientRedirectURL | String | Client redirect after getting info 取號後使用者跳轉網址 |
-| ATMFromBankID | String | Payer bank code 繳費者銀行代碼 (for NeedExtraPaidInfo=Y) |
-| ATMFromBankAcc | String | Payer bank account 繳費者帳號 (for NeedExtraPaidInfo=Y) |
+| ExpireDate | Int | ATM expiry days (1-60, default **1**) ATM 繳費期限天數 (V1.4.7: default changed from 3 to 1) |
+| ExpireMinute | Int | ATM expiry minutes (10-1440, step 10, default 0=use ExpireDate) 繳費期限分鐘數（僅中國信託、第一銀行、凱基銀行支援；ExpireMinute 與 ExpireDate 不可同時帶入，若同時存在以 ExpireMinute 為主） |
+| PaymentInfoURL | String(200) | Payment info notification URL 取號結果通知網址 |
+| ClientRedirectURL | String(200) | Client redirect after getting info 取號後使用者跳轉網址 |
+| ATMFromBankID | String(3) | Payer bank code 轉出銀行代碼（需向業務申請，僅凱基 ATM 支援） |
+| ATMFromBankAcc | String(16) | Payer bank account 轉出銀行帳號（不足 16 碼左邊補 0；需向業務申請，僅凱基 ATM 支援） |
 
 ### CVS Specific Parameters | 超商代碼專用參數
 
@@ -198,6 +198,23 @@ license: MIT
 
 **Note 注意**: BARCODE returns 3 segment codes (Barcode1, Barcode2, Barcode3) that must be converted to Code39 format for printing.
 超商條碼會回傳 3 段條碼 (Barcode1, Barcode2, Barcode3)，需轉為 Code39 格式列印。
+
+**Deprecation note 過時提醒**: As of V1.5.0 (2026-03) the official doc lists only `Credit / ATM / CVS / AFTEE / BarcodeATM / ALL` as ChoosePayment values. `BARCODE` still exists in older merchant accounts but new integrations should use `BarcodeATM` (see below).
+自 V1.5.0（2026-03）起官方文件的 ChoosePayment 僅列出 `Credit / ATM / CVS / AFTEE / BarcodeATM / ALL`，舊特店仍可能支援 `BARCODE`，但新串接請改用 `BarcodeATM`。
+
+### BarcodeATM Specific Parameters | 超商快付專用參數 (V1.5.0, 2026-03)
+
+BarcodeATM (超商快付) is a new payment method added in V1.5.0. It generates a barcode that the customer scans at a 中國信託 ATM-linked convenience store terminal — similar to ATM transfer but done over the counter.
+超商快付是 V1.5.0 新增的付款方式，產生條碼後消費者至超商結帳櫃台掃碼，背後走中國信託 ATM 的機制，比原本的超商條碼更即時。
+
+| Parameter 參數 | Type 型態 | Description 說明 |
+|--------------|---------|----------------|
+| BarcodeATMExpireDate | Int | Expiry days (1-7, default 7) 繳費期限天數 (測試環境同上限 7 天) |
+| PaymentInfoURL | String(200) | Payment info notification URL 取號結果通知網址 |
+| ClientRedirectURL | String(200) | Client redirect URL 取號後跳轉網址 |
+
+Return `PaymentType` in notifications will be `BarcodeATM_CHINATRUST`.
+取號結果通知回傳的 `PaymentType` 為 `BarcodeATM_CHINATRUST`。
 
 ### Credit Card Specific Parameters | 信用卡專用參數
 
@@ -655,14 +672,18 @@ These replacements are **MANDATORY**. Without them, CheckMacValue will be wrong.
 | `%28` | `(` |
 | `%29` | `)` |
 
-**Additional Note 補充**: Space `%20` is replaced with `+` in .NET URL encoding, but Python's `urllib.parse.quote` uses `%20` (which is correct for this context since we do the .NET replacements separately).
+**CRITICAL 重要**: `.NET` `HttpUtility.UrlEncode` encodes **space as `+` (NOT `%20`)**. Python's `urllib.parse.quote()` produces `%20`, which will produce a WRONG hash. You must either use `quote_plus()` (recommended) or manually replace `%20` → `+` before the other .NET replacements. Since every OMG request has `MerchantTradeDate` in format `yyyy/MM/dd HH:mm:ss` (contains a space), this mistake will cause **every request to fail with `10200047 CheckMacValue Verification Failed`**.
+.NET 的 `HttpUtility.UrlEncode` 會把空白轉成 `+`（不是 `%20`）。Python 的 `urllib.parse.quote()` 會產生 `%20`，會得到錯誤的雜湊值。請使用 `quote_plus()`（推薦）或在其他 .NET 替換之前手動將 `%20` 換成 `+`。因為每筆 OMG 訂單的 `MerchantTradeDate` 都是 `yyyy/MM/dd HH:mm:ss` 格式（中間有空白），忽略這點會導致**每一筆請求都以 `10200047 CheckMacValue 驗證失敗` 被擋**。
 
 ### Python Implementation | Python 實作
 
 ```python
 import hashlib
-from urllib.parse import quote
+from urllib.parse import quote_plus
 
+# .NET URL encode keeps these chars literal instead of percent-encoding.
+# After quote_plus(raw, safe=""), these still appear as %xx and must be replaced.
+# 注意：quote_plus 已處理空白→'+'，因此不需要 '%20': '+'。
 DOTNET_REPLACEMENTS = {
     "%2d": "-", "%5f": "_", "%2e": ".",
     "%21": "!", "%2a": "*", "%28": "(", "%29": ")",
@@ -682,8 +703,9 @@ def generate_check_mac_value(params: dict, hash_key: str, hash_iv: str) -> str:
     # 4. Prepend HashKey, append HashIV / 加上 HashKey/HashIV
     raw = f"HashKey={hash_key}&{param_str}&HashIV={hash_iv}"
 
-    # 5. URL encode + lowercase / URL encode + 轉小寫
-    encoded = quote(raw, safe="").lower()
+    # 5. URL encode (quote_plus → space becomes '+') + lowercase
+    # 使用 quote_plus 讓空白變 '+'，與 .NET HttpUtility.UrlEncode 一致
+    encoded = quote_plus(raw, safe="").lower()
 
     # 6. .NET replacements / .NET 替換
     for old, new in DOTNET_REPLACEMENTS.items():
@@ -691,6 +713,27 @@ def generate_check_mac_value(params: dict, hash_key: str, hash_iv: str) -> str:
 
     # 7+8. SHA256 → uppercase / SHA256 → 大寫
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
+
+
+# === Self-test against official doc test vector (developers.omg.com.tw) ===
+# 官方文件附錄「檢查碼機制」提供的測試向量。
+if __name__ == "__main__":
+    _test_params = {
+        "MerchantID": "2000132",
+        "MerchantTradeNo": "funpoint20130312153023",
+        "MerchantTradeDate": "2013/03/12 15:30:23",
+        "PaymentType": "aio",
+        "TotalAmount": "1000",
+        "TradeDesc": "促銷方案",
+        "ItemName": "Apple iphone 7 手機殼",
+        "ReturnURL": "https://www.funpoint.com.tw/receive.php",
+        "ChoosePayment": "ALL",
+        "EncryptType": "1",
+    }
+    _expected = "AA5842FDA7E55ACEB7118D6353E9822CA6D6FF09A0D1FC129A879DD5CAF93266"
+    _got = generate_check_mac_value(_test_params, "5294y06JbISpM5x9", "v77hoKGq4kWxNNIS")
+    assert _got == _expected, f"CheckMacValue self-test failed: got {_got}"
+    print("CheckMacValue self-test passed.")
 ```
 
 ### Node.js Implementation | Node.js 實作
@@ -698,7 +741,12 @@ def generate_check_mac_value(params: dict, hash_key: str, hash_iv: str) -> str:
 ```javascript
 const crypto = require('crypto');
 
+// CRITICAL: JS encodeURIComponent produces %20 for space, but .NET UrlEncode
+// produces '+'. We must convert %20 → '+' to match the server. This
+// replacement is done BEFORE the other .NET replacements to avoid ambiguity.
+// 注意：JS encodeURIComponent 將空白編碼為 %20，但 .NET 使用 '+'，必須替換。
 const DOTNET_REPLACEMENTS = {
+  '%20': '+',                                     // space → '+' (the critical fix)
   '%2d': '-', '%5f': '_', '%2e': '.',
   '%21': '!', '%2a': '*', '%28': '(', '%29': ')',
 };
@@ -710,7 +758,7 @@ function generateCheckMacValue(params, hashKey, hashIV) {
   filtered.sort(([a], [b]) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
   const paramStr = filtered.map(([k, v]) => `${k}=${v}`).join('&');
-  let raw = `HashKey=${hashKey}&${paramStr}&HashIV=${hashIV}`;
+  const raw = `HashKey=${hashKey}&${paramStr}&HashIV=${hashIV}`;
   let encoded = encodeURIComponent(raw).toLowerCase();
 
   for (const [old, rep] of Object.entries(DOTNET_REPLACEMENTS)) {
@@ -743,6 +791,10 @@ function generateCheckMacValue($params, $hashKey, $hashIV) {
     $raw = "HashKey={$hashKey}{$paramStr}&HashIV={$hashIV}";
 
     // URL encode + lowercase
+    // NOTE: PHP urlencode() already encodes space as '+' (matches .NET), so
+    // no %20 → '+' fix is needed here. Do NOT use rawurlencode() — it keeps
+    // space as %20 and will produce a wrong hash.
+    // 注意：PHP urlencode() 已將空白編為 '+'，與 .NET 一致。勿用 rawurlencode()。
     $encoded = strtolower(urlencode($raw));
 
     // .NET replacements
@@ -938,7 +990,9 @@ Most common issue. Please verify: 最常見的問題，請確認：
 3. .NET URL encode replacements are applied **after** URL encoding / URL encode **後**有做 .NET 替換
 4. Final result is uppercase / 最後轉大寫
 5. `EncryptType` is set to `1` (SHA256) / EncryptType 填 `1`
-6. URL encode uses `quote(raw, safe="")` not `quote_plus` / 使用 `quote(raw, safe="")` 而非 `quote_plus`
+6. **Python**: use `quote_plus(raw, safe="")` (NOT `quote`) so that space becomes `+`, matching `.NET` `HttpUtility.UrlEncode`. If you must use `quote`, prepend `'%20': '+'` to the replacement table. `quote(raw, safe="")` on its own will be WRONG because `MerchantTradeDate` always contains a space. / **Python 必用 `quote_plus(raw, safe="")`**（而非 `quote`），讓空白變成 `+` 以對齊 .NET；若一定要用 `quote`，替換表必須額外加上 `'%20': '+'`。只用 `quote` 會讓每一筆訂單的 CheckMacValue 都算錯，因為 `MerchantTradeDate` 必有空白
+7. **Node.js**: `encodeURIComponent` produces `%20` for space, so you MUST add `'%20': '+'` to the .NET replacement table / Node.js 的 `encodeURIComponent` 會產生 `%20`，替換表必須加入 `'%20': '+'`
+8. **PHP**: use `urlencode()` (space → `+`), NOT `rawurlencode()` (space → `%20`) / PHP 請用 `urlencode()` 而非 `rawurlencode()`
 
 ### Duplicate Order Number | 訂單編號重複
 
@@ -984,7 +1038,7 @@ If you get a CheckMacValue error, follow this step-by-step debugging process:
 # 除錯：印出 CheckMacValue 計算每一步
 
 def debug_check_mac_value(params: dict, hash_key: str, hash_iv: str):
-    from urllib.parse import quote
+    from urllib.parse import quote_plus
 
     # Step 1: Filter out CheckMacValue
     filtered = {k: v for k, v in params.items() if k != "CheckMacValue"}
@@ -1002,8 +1056,8 @@ def debug_check_mac_value(params: dict, hash_key: str, hash_iv: str):
     raw = f"HashKey={hash_key}&{param_str}&HashIV={hash_iv}"
     print(f"Step 4 - Raw string: {raw[:100]}...")
 
-    # Step 5: URL encode + lowercase
-    encoded = quote(raw, safe="").lower()
+    # Step 5: URL encode + lowercase  (quote_plus: space → '+')
+    encoded = quote_plus(raw, safe="").lower()
     print(f"Step 5 - Encoded: {encoded[:100]}...")
 
     # Step 6: .NET replacements
@@ -1342,8 +1396,12 @@ class OMGPaymentClient:
         self.query_trade_info_url = f"{self.base_url}/Cashier/QueryTradeInfo/V5"
         self.query_credit_card_period_url = f"{self.base_url}/Cashier/QueryCreditCardPeriodInfo"
         self.credit_card_period_action_url = f"{self.base_url}/Cashier/CreditCardPeriodAction"
-        self.do_action_url = f"{self.base_url}/Cashier/DoAction"
-        self.query_trade_v2_url = f"{self.base_url}/Cashier/QueryTrade/V2"
+        # NOTE: DoAction and QueryTrade/V2 live under /CreditDetail, NOT /Cashier.
+        # Production only — the test environment does not provide real authorizations
+        # so these endpoints have no stage URL per the official doc.
+        # /CreditDetail 路徑與正式環境限制請見官方文件「退款／取消交易」「查詢信用卡單筆明細」章節。
+        self.do_action_url = f"{self.base_url}/CreditDetail/DoAction"
+        self.query_trade_v2_url = f"{self.base_url}/CreditDetail/QueryTrade/V2"
 
         self.max_retries = 3
         self.retry_backoff_factor = 2
@@ -1352,23 +1410,47 @@ class OMGPaymentClient:
 
     def _calculate_check_mac_value(self, data: Dict[str, Any]) -> str:
         """
-        Calculate CheckMacValue for payment API security (SHA256).
+        Calculate CheckMacValue for OMG AioCheckOut V5 (SHA256).
 
-        這是 OMG 金流串接的核心安全驗證機制，使用 SHA256 演算法。
+        Implements the 8-step algorithm in the official appendix:
+          1. Drop CheckMacValue if present
+          2. Sort params A→Z (case-insensitive)
+          3. Join as key=value with '&'
+          4. Prepend 'HashKey={key}&' and append '&HashIV={iv}'
+          5. URL encode using quote_plus → space becomes '+' (matches .NET)
+          6. Lowercase
+          7. Replace .NET-literal chars (%2d→-, %5f→_, %2e→., %21→!, %2a→*, %28→(, %29→))
+          8. SHA256, uppercase
+
+        See SKILL.md "CheckMacValue Calculation" section for the canonical reference
+        implementation and the official test vector.
         """
-        # Sort parameters (case-insensitive)
-        sorted_params = sorted(data.items(), key=lambda x: x[0].lower())
+        from urllib.parse import quote_plus
 
-        # Build parameter string
-        param_str = '&'.join([f"{k}={v}" for k, v in sorted_params])
+        # 1. Drop CheckMacValue
+        filtered = {k: v for k, v in data.items() if k != "CheckMacValue"}
 
-        # Add HashIV at the beginning and HashKey at the end
-        mac_str = f"HashIV={self.hash_iv}&{param_str}&HashKey={self.hash_key}"
+        # 2. Sort A→Z (case-insensitive)
+        sorted_keys = sorted(filtered.keys(), key=lambda k: k.lower())
 
-        # SHA256 hash and uppercase
-        check_mac = hashlib.sha256(mac_str.encode('utf-8')).hexdigest().upper()
+        # 3. Join key=value
+        param_str = "&".join(f"{k}={filtered[k]}" for k in sorted_keys)
 
-        return check_mac
+        # 4. Prepend HashKey, append HashIV  (this order is mandatory)
+        raw = f"HashKey={self.hash_key}&{param_str}&HashIV={self.hash_iv}"
+
+        # 5+6. URL encode (space → '+') + lowercase
+        encoded = quote_plus(raw, safe="").lower()
+
+        # 7. .NET literal-char replacements
+        for old, new in (
+            ("%2d", "-"), ("%5f", "_"), ("%2e", "."),
+            ("%21", "!"), ("%2a", "*"), ("%28", "("), ("%29", ")"),
+        ):
+            encoded = encoded.replace(old, new)
+
+        # 8. SHA256 → uppercase
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
 
     def _make_request(self, url: str, data: Dict[str, Any], max_retries: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -2507,7 +2589,7 @@ if __name__ == "__main__":
 
 ## Reference | 參考文件
 
-- OMG Payment Official API Document: `funpoint_aio.pdf` (V 1.4.9, 2025-11)
+- OMG Payment Official API Document: `funpoint_aio.pdf` (V 1.5.0, 2026-03)
 - Company 公司: **茂為歐買尬數位科技股份有限公司** / **MacroWell OMG Digital Entertainment Co., Ltd.**
 - Country 國家: **Taiwan 台灣**
 - Official Website 官方網站: **https://www.funpoint.com.tw/**
@@ -2530,3 +2612,28 @@ if __name__ == "__main__":
 - For any questions, please contact the official OMG website: **https://www.funpoint.com.tw/**
 - 本文件為開源專案，採用 MIT License，可自由使用、修改、分享。
 - This document is open source under MIT License, free to use, modify, and share.
+
+---
+
+## Version History | 版本歷史
+
+### 2026-04-11 — Critical CheckMacValue fix + V1.5.0 alignment
+
+**🔥 CRITICAL BUG FIX 重大修正**:
+- **CheckMacValue space handling**: Replaced `urllib.parse.quote()` with `urllib.parse.quote_plus()` in all Python implementations (top-level, debug helper, and `OMGPaymentClient` SDK class). `quote()` emits `%20` for spaces but `.NET HttpUtility.UrlEncode` emits `+`. Because `MerchantTradeDate` is `yyyy/MM/dd HH:mm:ss` and ALWAYS contains a space, every previous request would fail with `10200047 CheckMacValue Verification Failed`.
+- **Node.js fix**: Added `'%20': '+'` to `DOTNET_REPLACEMENTS` (`encodeURIComponent` does not produce `+` for spaces).
+- **PHP**: confirmed `urlencode()` is correct (matches .NET); never use `rawurlencode()`.
+- Verified against the official OMG test vector — generated hash now matches `AA5842FDA7E55ACEB7118D6353E9822CA6D6FF09A0D1FC129A879DD5CAF93266`.
+
+**SDK class fixes**:
+- `OMGPaymentClient._calculate_check_mac_value` was previously using reversed `HashIV={iv}&...&HashKey={key}` ordering. Replaced with the correct 8-step algorithm using `HashKey={key}&...&HashIV={iv}` order.
+- Corrected `do_action_url` and `query_trade_v2_url` to use `/CreditDetail/` (was incorrectly `/Cashier/`).
+
+**V1.5.0 (2026-03) doc alignment**:
+- Bumped API document version from V1.4.9 → V1.5.0.
+- `ItemName` length corrected from 400 → 200.
+- `RiskMerchantMemberID` length corrected from 50 → 100.
+- `ChoosePayment` enum updated to `Credit / ATM / CVS / AFTEE / BarcodeATM / ALL` (legacy `BARCODE` noted).
+- ATM block: `ExpireDate` default `3 → 1` (V1.4.7), added `ATMFromBankID String(3)`, `ATMFromBankAcc String(16)` with left-pad note, ChinaTrust/FirstBank/KGI bank notes for `ExpireMinute`.
+- New BarcodeATM (超商快付) section with `BarcodeATMExpireDate`, `PaymentInfoURL`, `ClientRedirectURL` parameters.
+- Added explicit Python/Node/PHP guidance to "Common Errors" section explaining the URL-encode pitfall.

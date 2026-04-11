@@ -41,7 +41,7 @@ import json
 import os
 import logging
 from datetime import datetime, timedelta
-from urllib.parse import quote
+from urllib.parse import quote_plus
 from collections import defaultdict
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse
@@ -119,7 +119,10 @@ def generate_check_mac_value(params: dict) -> str:
     sorted_keys = sorted(filtered.keys(), key=lambda k: k.lower())
     param_str = "&".join(f"{k}={filtered[k]}" for k in sorted_keys)
     raw = f"HashKey={HASH_KEY}&{param_str}&HashIV={HASH_IV}"
-    encoded = quote(raw, safe="").lower()
+    # CRITICAL: use quote_plus (space → "+") to match .NET HttpUtility.UrlEncode.
+    # quote() would emit "%20" for spaces, which fails CheckMacValue verification
+    # because MerchantTradeDate (yyyy/MM/dd HH:mm:ss) ALWAYS contains a space.
+    encoded = quote_plus(raw, safe="").lower()
     for old, new in DOTNET_REPLACEMENTS.items():
         encoded = encoded.replace(old, new)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
