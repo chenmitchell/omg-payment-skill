@@ -19,3 +19,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## 補充說明（非授權條款的一部分）
+
+- 本 Skill 是個人社群專案，不是 OMG（茂為歐買尬數位科技股份有限公司）的官方資源，也未取得任何官方背書
+- 本 Skill 的架構、目錄配置與 CI 驗證流程參考自綠界科技的 [ECPay/ECPay-API-Skill](https://github.com/ECPay/ECPay-API-Skill)，在此致謝
+- 本 Skill 內所有法規範例、退款政策公版、服務條款公版僅供參考，不構成法律意見，上線前請委請法務審閱
+- 測試環境參考資訊（如 MerchantID `1000031`）為 OMG 公開之測試資料，非本維護者之私有資料
+- 申請正式環境金鑰的唯一官方入口為 <https://www.funpoint.com.tw/member/register>
+- 本 Skill 所有程式碼、文件、測試向量均在 Claude 協助下撰寫，經人工審閱後提交
+
+若您於商業專案中使用本 Skill，歡迎（非必要）於您的 repo README 提及本 Skill 作為參考來源。

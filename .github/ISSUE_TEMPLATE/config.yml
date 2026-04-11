@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 官方 OMG 金流資源
+    url: https://github.com/omgtwhub/
+    about: 本 Skill 是個人社群專案。若您的問題涉及官方 API 行為、SDK bug、帳戶開通等議題，請優先前往歐買尬官方 GitHub。
+  - name: OMG 會員註冊（申請正式金鑰）
+    url: https://www.funpoint.com.tw/member/register
+    about: 申請 OMG 會員、取得正式環境 MerchantID / HashKey / HashIV 的唯一官方入口
+  - name: FunPoint 商家後台（正式環境）
+    url: https://www.funpoint.com.tw/member/login
+    about: 費率議價、對帳、撥款、正式環境金鑰管理請直接登入官方商家後台或聯繫歐買尬官方客服
+  - name: 維護者個人網站
+    url: https://www.mitch.tw
+    about: 若您的問題與本 Skill 的使用情境相關，但不適合公開討論（如涉及個案商業邏輯），可透過維護者個人網站聯繫
+  - name: g0v 零時政府
+    url: https://g0v.tw/intl/zh-TW/manifesto/
+    about: 了解本 Skill 的精神來源，以及「不要問為什麼沒有人做這個，先承認你就是『沒有人』」的社群文化

@@ -1,0 +1,27 @@
+# CODEOWNERS — 每次 PR 會自動要求下列維護者 review
+# 格式說明：https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# 全域預設
+*                               @mitchellchen
+
+# 核心執行規則（改動影響全部 AI 行為，謹慎 review）
+/SKILL.md                       @mitchellchen
+/CLAUDE.md                      @mitchellchen
+/AGENTS.md                      @mitchellchen
+/GEMINI.md                      @mitchellchen
+/SKILL_OPENAI.md                @mitchellchen
+/vscode_copilot.md              @mitchellchen
+/google_AI_studio.md            @mitchellchen
+
+# 演算法與測試向量（改動需同步更新 test-vectors）
+/references/check-mac-value.md  @mitchellchen
+/test-vectors/                  @mitchellchen
+
+# CI 與驗證腳本
+/.github/workflows/             @mitchellchen
+/scripts/                       @mitchellchen
+
+# 法規範例（改動前建議與法務確認）
+/guides/13-legal-tos.md         @mitchellchen
+/guides/14-legal-privacy.md     @mitchellchen
+/guides/15-legal-refund.md      @mitchellchen

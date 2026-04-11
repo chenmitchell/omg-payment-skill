@@ -1,0 +1,62 @@
+name: validate-references
+
+on:
+  schedule:
+    # 每週日 UTC 03:00 執行
+    - cron: '0 3 * * 0'
+  workflow_dispatch: {}
+
+jobs:
+  check-external-urls:
+    name: 檢查外部參考連結
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract URLs from docs
+        id: extract
+        run: |
+          set -euo pipefail
+          # 抓出所有 markdown 檔案中的 http(s) URL
+          grep -rhoE 'https?://[a-zA-Z0-9./_%+-]+[a-zA-Z0-9/_-]' \
+            --include='*.md' . 2>/dev/null \
+            | grep -v 'example.com\|127.0.0.1\|localhost' \
+            | sort -u > urls.txt || true
+          echo "count=$(wc -l < urls.txt)" >> "$GITHUB_OUTPUT"
+          echo "抓到 $(wc -l < urls.txt) 個外部連結"
+
+      - name: Check each URL
+        run: |
+          set +e
+          fail=0
+          total=0
+          while IFS= read -r url; do
+            [ -z "$url" ] && continue
+            total=$((total+1))
+            status=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 15 "$url" || echo "000")
+            if [ "$status" = "000" ] || [ "$status" -ge 400 ]; then
+              echo "FAIL [$status] $url"
+              fail=$((fail+1))
+            fi
+          done < urls.txt
+          echo ""
+          echo "總計 $total 個連結，$fail 個失敗"
+          if [ "$fail" -gt 0 ]; then
+            exit 1
+          fi
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[自動] 外部連結失效回報 ${new Date().toISOString().slice(0,10)}`;
+            const body = '本週 validate-references workflow 偵測到失效連結，請查看 workflow log：' +
+                         `\n\n${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['ci', 'broken-link'],
+            });

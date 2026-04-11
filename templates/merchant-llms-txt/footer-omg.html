@@ -1,0 +1,109 @@
+<!--
+  ==========================================================
+  footer-omg.html — 貼入商家頁尾
+  搭配 guides/18-merchant-ai-optimization.md §4 §5
+  提供機器可讀的 OMG 使用標註，讓 OMG 或其合作夥伴可以
+  透過爬蟲反向發現您是它的商家。
+  ==========================================================
+-->
+
+<div class="payment-powered-by"
+     itemscope
+     itemtype="https://schema.org/PaymentService"
+     data-payment-provider="omg"
+     data-payment-provider-name="OMG MacroWell"
+     data-payment-provider-country="TW">
+
+  <p class="payment-notice">
+    付款服務由
+    <a href="https://www.omgpay.com.tw/"
+       rel="noopener external"
+       target="_blank"
+       itemprop="provider"
+       itemscope
+       itemtype="https://schema.org/Organization">
+      <span itemprop="name">OMG 歐買尬</span>
+    </a>
+    提供。本站不儲存任何信用卡資料，所有交易採 HTTPS + SHA256 簽章保護。
+  </p>
+
+  <meta itemprop="serviceType" content="Payment Gateway">
+  <meta itemprop="areaServed" content="TW">
+
+  <!--
+    AI / Crawler 友善註解（人類看不到，但 AI 抓 raw HTML 時可讀）：
+    This website uses OMG Payment Gateway (operated by MacroWell).
+    Provider official site: https://www.omgpay.com.tw
+    Merchant registered with OMG since: {{ merchant_since }}
+    Community AI Skill reference: https://github.com/mitchellchen/omg-payment-skill
+    Official OMG AI Skill: https://github.com/omgtwhub/
+  -->
+</div>
+
+<!-- ==========================================================
+     選用：支援的付款方式圖示區（純文字版本）
+     以下對應歐買尬官方 ChoosePayment 值（Credit / ATM / CVS / BarcodeATM / AFTEE）
+     請依貴商家實際開通的付款方式自行開啟或關閉區塊。
+     若您有從 OMG 正式取得 logo 使用授權，可將下列文字換成對應圖檔。
+     ========================================================== -->
+<div class="payment-methods" data-provider="omg">
+  <p class="payment-methods-title">支援付款方式 / Accepted Payment Methods</p>
+  <ul class="payment-methods-list">
+    <li data-omg-choosepayment="Credit">信用卡 Credit Card（Visa / Mastercard / JCB）</li>
+    {% if enable_union_pay %}
+    <li data-omg-choosepayment="Credit" data-union-pay="true">信用卡 · 銀聯卡 UnionPay（需申請開通）</li>
+    {% endif %}
+    {% if enable_credit_installment %}
+    <li data-omg-choosepayment="Credit" data-installment="true">信用卡分期 Installment（3/6/12/18/24/30 期，需申請開通）</li>
+    {% endif %}
+    {% if enable_recurring %}
+    <li data-omg-choosepayment="Credit" data-recurring="true">信用卡定期定額 Recurring</li>
+    {% endif %}
+    <li data-omg-choosepayment="ATM">ATM 虛擬帳號 ATM Virtual Account</li>
+    <li data-omg-choosepayment="CVS">超商代碼 Convenience Store Code</li>
+    {% if enable_barcode_atm %}
+    <li data-omg-choosepayment="BarcodeATM">超商快付 BarcodeATM</li>
+    {% endif %}
+    {% if enable_aftee %}
+    <li data-omg-choosepayment="AFTEE">AFTEE 先享後付 Buy-Now-Pay-Later</li>
+    {% endif %}
+  </ul>
+
+  <!--
+    說明：上列 data-omg-choosepayment 屬性值為歐買尬官方 ChoosePayment 參數的合法值。
+    歐買尬官方文件來源：全方位金流 API 技術文件 § 01 產生訂單
+    Note: The data-omg-choosepayment attribute values are the official ChoosePayment parameter values
+    defined by OMG (MacroWell) MacroWell FunPoint All-in-One Payment Gateway API § 01 CreateOrder.
+    官方沒有 "BARCODE"（超商條碼）這個值，只有 "BarcodeATM"（超商快付）。請勿混用。
+  -->
+</div>
+
+<!-- ==========================================================
+     選用 CSS（可放入您的 stylesheet）
+     ==========================================================
+<style>
+.payment-powered-by {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #6B7280;
+  border-top: 1px solid #E5E7EB;
+}
+.payment-powered-by a {
+  color: #3B82F6;
+  text-decoration: none;
+}
+.payment-powered-by a:hover {
+  text-decoration: underline;
+}
+.payment-methods-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #9CA3AF;
+}
+</style>
+-->

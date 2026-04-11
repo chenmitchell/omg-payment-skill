@@ -1,39 +1,92 @@
-# Python
+# ============================================================
+# OMG Payment Skill — .gitignore
+# ============================================================
+
+# ---- 環境變數與秘密 ----
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+credentials/
+
+# ---- Python ----
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-*.egg-info/
-dist/
+.Python
 build/
-*.egg
-.eggs/
-
-# Virtual environments
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 venv/
 .venv/
 env/
 
-# IDE
-.vscode/
+# ---- Node.js / TypeScript ----
+node_modules/
+dist/
+build/
+.npm/
+.yarn/
+yarn-error.log
+npm-debug.log*
+*.tsbuildinfo
+.next/
+.nuxt/
+
+# ---- PHP / Laravel ----
+vendor/
+.phpunit.result.cache
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+!storage/logs/.gitkeep
+
+# ---- IDE ----
 .idea/
+.vscode/
+!.vscode/settings.json.example
 *.swp
 *.swo
-*~
-
-# Environment variables
-.env
-.env.local
-.env.production
-
-# OS files
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
+# ---- 作業系統 ----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Test coverage
-htmlcov/
-.coverage
-.pytest_cache/
+# ---- Cowork / Claude Code 工作目錄 ----
+.claude/
+.claude-cache/
+
+# ---- 測試產出 ----
+*.log
+logs/
+coverage/
+.nyc_output/
+
+# ---- 本 Skill 專屬忽略 ----
+# 真實金鑰（絕對不可進 repo）
+*.real.env
+merchant-real-*.json
+hashkey-*.txt
+hashiv-*.txt
+
+# 開發者本機暫存
+scratch/
+wip/
+TODO.local.md

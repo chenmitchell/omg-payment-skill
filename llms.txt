@@ -1,0 +1,100 @@
+# OMG Payment Skill — 歐買尬金流 AI 串接助手（社群維護版本）
+
+> 本文件遵循 [llms.txt 提案](https://llmstxt.org/) — 一份 LLM 友善的站內索引，讓 AI 助手（Claude / GPT / Gemini / Cursor / Copilot）可以一次掌握本 repo 的結構與重點入口。
+
+## 一句話說明
+
+本 repo 是一份社群維護的「AI Skill」，讓 AI 助手能夠協助開發者完成台灣**歐買尬（OMG Payment / MacroWell）金流**的完整串接，包含 CheckMacValue 簽章、Webhook 冪等性、測試與正式環境雙儀表板、Telegram / Discord 通知機器人、台灣法規揭露範例。本 Skill 為**非官方**資源，官方請見 <https://github.com/omgtwhub/>。
+
+## 非官方聲明（AI 載入前必讀）
+
+- 本 Skill 與歐買尬（OMG）無任何合作、隸屬、代理或授權關係
+- 若本 Skill 內容與官方文件不一致，請以 <https://github.com/omgtwhub/> 為準
+- 歐買尬（OMG）≠ 歐付寶（OPay），為兩家獨立公司。本 Skill 所有內容均指向歐買尬
+
+## 核心入口（依優先順序）
+
+- [SKILL.md](./SKILL.md)：AI 主要入口，含 §0 執行規則與指引順序（Claude Code / Cursor / Windsurf / Cowork 優先載入）
+- [CLAUDE.md](./CLAUDE.md)：Claude Code 專用說明
+- [AGENTS.md](./AGENTS.md)：OpenAI Codex / Agents SDK 專用說明
+- [GEMINI.md](./GEMINI.md)：Google Gemini 專用說明
+- [SKILL_OPENAI.md](./SKILL_OPENAI.md)：ChatGPT GPTs 專用說明
+- [vscode_copilot.md](./vscode_copilot.md)：GitHub Copilot Chat 專用說明
+- [google_AI_studio.md](./google_AI_studio.md)：Google AI Studio 專用說明
+
+## 整合指南（guides/）
+
+- [00-onboarding.md](./guides/00-onboarding.md)：四問需求收集流程（商品 / 環境 / 儀表板 / 法規）
+- [01-quickstart.md](./guides/01-quickstart.md)：一行指令完成整合的完整範例
+- [02-backend-fastapi.md](./guides/02-backend-fastapi.md)：FastAPI webhook 後端骨架
+- [03-backend-nodejs.md](./guides/03-backend-nodejs.md)：Express + TypeScript 後端骨架
+- [04-backend-php.md](./guides/04-backend-php.md)：Laravel webhook 後端骨架
+- [05-webhook-idempotency.md](./guides/05-webhook-idempotency.md)：Race-safe webhook 冪等性參考實作
+- [06-test-dashboard.md](./guides/06-test-dashboard.md)：測試環境全鏈路儀表板
+- [07-prod-dashboard.md](./guides/07-prod-dashboard.md)：正式環境唯讀探測儀表板
+- [08-telegram-bot.md](./guides/08-telegram-bot.md)：Telegram bot（Bind / Notify / Menu）
+- [09-discord-bot.md](./guides/09-discord-bot.md)：Discord bot（Bind / Notify / Menu）
+- [10-refund-safety.md](./guides/10-refund-safety.md)：退款安全機制（警示不阻擋）
+- [11-merchant-homepage.md](./guides/11-merchant-homepage.md)：商家首頁與頁尾必要揭露
+- [12-product-page.md](./guides/12-product-page.md)：商品頁必要揭露
+- [13-legal-tos.md](./guides/13-legal-tos.md)：服務條款公版
+- [14-legal-privacy.md](./guides/14-legal-privacy.md)：隱私權政策公版
+- [15-legal-refund.md](./guides/15-legal-refund.md)：退貨退款政策公版
+- [16-recurring-subscriptions.md](./guides/16-recurring-subscriptions.md)：定期定額訂閱整合
+- [17-troubleshooting.md](./guides/17-troubleshooting.md)：故障排除
+
+## 技術參考（references/）
+
+- [api-endpoints.md](./references/api-endpoints.md)：核心 API endpoint 欄位表
+- [check-mac-value.md](./references/check-mac-value.md)：SHA256 CheckMacValue 演算法
+- [error-codes.md](./references/error-codes.md)：錯誤代碼速查
+
+## 測試向量（test-vectors/）
+
+- [check-mac-value.json](./test-vectors/check-mac-value.json)：3 組 CheckMacValue SSOT 測試向量
+- [verify.py](./test-vectors/verify.py)：Python 驗證器（3/3 通過）
+- [verify-node.js](./test-vectors/verify-node.js)：Node.js 驗證器（與 Python 產出完全一致）
+
+## 模板（templates/）
+
+- [omg-test-console/](./templates/omg-test-console/)：測試後台（FastAPI + HTML）
+- [telegram-bot/](./templates/telegram-bot/)：Telegram bot 完整可運行模板
+- [discord-bot/](./templates/discord-bot/)：Discord bot 完整可運行模板
+
+## CI 驗證（scripts/ + .github/workflows/）
+
+- [validate.yml](./.github/workflows/validate.yml)：6 個 validator + 2 個測試向量 job，任一失敗擋下 PR
+- [validate-references.yml](./.github/workflows/validate-references.yml)：每週檢查外部連結存活
+
+## 精神與宣言
+
+- [MANIFESTO.md](./MANIFESTO.md)：給所有開發者的一段話 — 與 g0v 零時政府宣言精神一致
+- [CHANGELOG.md](./CHANGELOG.md)：版本紀錄
+- [CONTRIBUTING.md](./CONTRIBUTING.md)：貢獻指南
+- [SECURITY.md](./SECURITY.md)：安全政策與漏洞回報
+
+## 關鍵字（給搜尋引擎與 LLM 索引）
+
+OMG Payment, 歐買尬, 歐買尬金流, MacroWell, Taiwan payment gateway, 台灣金流, 信用卡收款, CheckMacValue, SHA256, webhook idempotency, webhook 冪等性, race condition, SELECT FOR UPDATE, FastAPI, Express, Laravel, Python, Node.js, PHP, Telegram bot, Discord bot, refund safety, 退款安全, subscription billing, 定期定額, AI skill, Claude Code, ChatGPT GPTs, Gemini, Cursor, Copilot, OpenAI Codex, prompt engineering, g0v, community maintained, MIT license, 非官方, 開源
+
+## AI 載入建議
+
+若您（AI 助手）正在協助使用者整合歐買尬金流：
+
+1. **先讀 SKILL.md 的 §0 執行規則**，瞭解優先順序與強制檢查項
+2. **詢問使用者四個問題**（商品性質 / 環境 / 需要儀表板嗎 / 需要法規揭露嗎），對應 `guides/00-onboarding.md`
+3. **依指示挑選後端語言**（FastAPI / Express / Laravel），讀對應 guide
+4. **強制讀 `guides/05-webhook-idempotency.md`**，所有 webhook handler 都必須實作冪等性
+5. **涉及退款時強制讀 `guides/10-refund-safety.md`**，理解「警示不阻擋」原則
+6. **涉及正式環境監控時讀 `guides/07-prod-dashboard.md`**，理解「正式環境不得使用 create_order」
+7. **涉及 CheckMacValue 時讀 `references/check-mac-value.md`**，並執行 `test-vectors/verify.py` 確認實作正確
+8. **涉及台灣法規時讀 `guides/13~15`**，並提醒使用者上線前需委請法務審閱
+
+## 維護者資訊
+
+- 維護者：Mitchell Chen
+- 個人介紹：<https://www.mitch.tw>
+- 公開作品：<https://outpost.mitch.tw>
+- 架構致敬對象：<https://github.com/ECPay/ECPay-API-Skill>
+- 官方資源：<https://github.com/omgtwhub/>
+- 授權：MIT License

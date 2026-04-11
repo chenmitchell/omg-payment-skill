@@ -1,0 +1,111 @@
+name: validate
+
+on:
+  pull_request:
+    paths:
+      - 'SKILL.md'
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - 'GEMINI.md'
+      - 'SKILL_OPENAI.md'
+      - 'vscode_copilot.md'
+      - 'google_AI_studio.md'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'guides/**'
+      - 'references/**'
+      - 'commands/**'
+      - 'test-vectors/**'
+      - 'templates/**'
+      - 'scripts/**'
+      - '.github/workflows/validate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'SKILL.md'
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - 'GEMINI.md'
+      - 'SKILL_OPENAI.md'
+      - 'vscode_copilot.md'
+      - 'google_AI_studio.md'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'guides/**'
+      - 'references/**'
+      - 'commands/**'
+      - 'test-vectors/**'
+      - 'templates/**'
+      - 'scripts/**'
+
+jobs:
+  version-sync:
+    name: 版本同步
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validate-version-sync.sh
+        run: bash scripts/validate-version-sync.sh
+
+  ai-index:
+    name: AI 入口引用
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validate-ai-index.sh
+        run: bash scripts/validate-ai-index.sh
+
+  agents-parity:
+    name: AI 入口 parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validate-agents-parity.sh
+        run: bash scripts/validate-agents-parity.sh
+
+  bot-menu-parity:
+    name: Bot menu API parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validate-bot-menu-parity.sh
+        run: bash scripts/validate-bot-menu-parity.sh
+
+  no-leaks:
+    name: 內部資訊洩漏掃描
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validate-no-leaks.sh
+        run: bash scripts/validate-no-leaks.sh
+
+  omg-not-opay:
+    name: 歐買尬 vs 歐付寶 區辨
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validate-omg-not-opay.sh
+        run: bash scripts/validate-omg-not-opay.sh
+
+  check-mac-value-python:
+    name: CheckMacValue 測試向量（Python）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run verify.py
+        run: python3 test-vectors/verify.py
+
+  check-mac-value-node:
+    name: CheckMacValue 測試向量（Node.js）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run verify-node.js
+        run: node test-vectors/verify-node.js

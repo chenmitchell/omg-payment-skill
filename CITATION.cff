@@ -1,0 +1,69 @@
+cff-version: 1.2.0
+title: "OMG Payment Skill — 歐買尬金流 AI 串接助手（社群維護版本）"
+message: "If you use this Skill in your project, please cite it as below."
+type: software
+authors:
+  - family-names: Chen
+    given-names: Mitchell
+    website: "https://www.mitch.tw"
+    alias: "mitchellchen"
+abstract: >-
+  A community-maintained AI Skill (knowledge pack) that enables AI assistants
+  such as Claude, ChatGPT, Gemini, Cursor, Copilot, and Codex to assist developers
+  in integrating Taiwan's OMG Payment (MacroWell) gateway. It includes FastAPI /
+  Express / Laravel backend scaffolds, SHA256 CheckMacValue reference
+  implementations with cross-language test vectors, race-safe webhook idempotency
+  patterns, dual-environment dashboards (test with full-chain verification, prod
+  with read-only probes), Telegram/Discord notification bots with bind/notify/menu
+  parity, refund safety with warn-not-block semantics, and Taiwan legal templates
+  (Terms of Service, Privacy Policy, Refund Policy). Not affiliated with OMG;
+  official resources at https://github.com/omgtwhub/.
+keywords:
+  - omg-payment
+  - omg
+  - macrowell
+  - taiwan-payment-gateway
+  - checkmacvalue
+  - webhook-idempotency
+  - fastapi
+  - laravel
+  - express
+  - ai-skill
+  - claude-code
+  - chatgpt-gpts
+  - gemini
+  - cursor
+  - github-copilot
+  - openai-codex
+  - telegram-bot
+  - discord-bot
+  - refund-safety
+  - subscription-billing
+  - prompt-engineering
+  - community-maintained
+  - g0v
+version: 2.0.0
+date-released: 2026-04-12
+license: MIT
+repository-code: "https://github.com/mitchellchen/omg-payment-skill"
+url: "https://github.com/mitchellchen/omg-payment-skill"
+identifiers:
+  - type: url
+    value: "https://github.com/mitchellchen/omg-payment-skill"
+    description: GitHub repository
+references:
+  - type: software
+    title: "ECPay/ECPay-API-Skill"
+    authors:
+      - name: "綠界科技 ECPay"
+    url: "https://github.com/ECPay/ECPay-API-Skill"
+    notes: >-
+      Architectural inspiration. Multi-platform entry files, SKILL.md structure,
+      validate.yml CI pattern, test-vectors separation, and agents parity design
+      are adapted from ECPay's public Skill repository.
+  - type: manifesto
+    title: "g0v 零時政府宣言"
+    url: "https://g0v.tw/intl/zh-TW/manifesto/"
+    notes: >-
+      "不要問為什麼沒有人做這個，先承認你就是『沒有人』" — The guiding spirit of this
+      community-maintained Skill.

@@ -1,0 +1,48 @@
+version: 2
+updates:
+  # GitHub Actions workflow
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Taipei"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # Python 相依（templates/telegram-bot, discord-bot, omg-test-console）
+  - package-ecosystem: "pip"
+    directory: "/templates/telegram-bot"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps(python)"
+
+  - package-ecosystem: "pip"
+    directory: "/templates/discord-bot"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps(python)"
+
+  - package-ecosystem: "pip"
+    directory: "/templates/omg-test-console"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps(python)"

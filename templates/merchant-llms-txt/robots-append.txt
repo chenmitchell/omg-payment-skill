@@ -1,0 +1,53 @@
+# ============================================================
+# 下列段落請追加至您既有的 robots.txt 末尾
+# 若您尚無 robots.txt，請建立一個新檔案並貼入下列內容
+# ============================================================
+
+# AI / LLM crawlers — 允許 AI 爬取以提升 AI 搜尋可見度
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# LLM-friendly index
+# Spec: https://llmstxt.org
+Sitemap: https://{{ domain }}/sitemap.xml
+
+# Primary LLM entrypoint:
+# https://{{ domain }}/llms.txt
+# Full knowledge pack:
+# https://{{ domain }}/llms-full.txt

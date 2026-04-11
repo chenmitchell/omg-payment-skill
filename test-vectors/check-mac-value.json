@@ -1,0 +1,57 @@
+{
+  "description": "CheckMacValue 測試向量。本檔案為 SSOT（single source of truth）— 任何 CheckMacValue 實作調整均必須通過下列向量。",
+  "source": "community-maintained (omg-payment-skill)",
+  "official_reference": "https://github.com/omgtwhub/",
+  "algorithm": {
+    "name": "SHA256",
+    "steps": [
+      "1. 移除 CheckMacValue 欄位",
+      "2. 依 key 字典序排序",
+      "3. 串接 HashKey={HashKey}&K1=V1&K2=V2&...&HashIV={HashIV}",
+      "4. .NET 風格 URL encoding + 小寫",
+      "5. 還原 %2d→-, %5f→_, %2e→., %21→!, %2a→*, %28→(, %29→)",
+      "6. SHA256 後轉大寫 hex"
+    ],
+    "reference": "references/check-mac-value.md"
+  },
+  "hash_key": "TESTKEY1234567890",
+  "hash_iv": "TESTIV1234567890",
+  "vectors": [
+    {
+      "name": "V1 — 標準信用卡 create_order payload",
+      "params": {
+        "MerchantID": "1000031",
+        "MerchantTradeNo": "TEST20260412001",
+        "MerchantTradeDate": "2026/04/12 10:00:00",
+        "PaymentType": "aio",
+        "TotalAmount": "100",
+        "TradeDesc": "test",
+        "ItemName": "testitem",
+        "ReturnURL": "https://example.com/webhook",
+        "ChoosePayment": "Credit"
+      },
+      "expected_mac": "84A9C3EFD9D359005269C76372B84FA2FE3C985DF0C965F59E750621C4D13087"
+    },
+    {
+      "name": "V2 — 最小欄位集",
+      "params": {
+        "MerchantID": "1000031",
+        "MerchantTradeNo": "MIN001",
+        "TotalAmount": "1",
+        "PaymentType": "aio"
+      },
+      "expected_mac": "E0437AB2B5A9C1DF3DA7B36E3C9A464D15B56023C0DAE66D12BFA21D182AE962"
+    },
+    {
+      "name": "V3 — 含 .NET 特殊字元的 ItemName",
+      "params": {
+        "MerchantID": "1000031",
+        "MerchantTradeNo": "SPECIAL001",
+        "ItemName": "item (test) - 1*2_3.4!",
+        "TotalAmount": "250",
+        "PaymentType": "aio"
+      },
+      "expected_mac": "D73278BDDE906AC37A3BA3EF7C8B56EAEC9567AE14DD1F4DFDD248ADB4D8F628"
+    }
+  ]
+}

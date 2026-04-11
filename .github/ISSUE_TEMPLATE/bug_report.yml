@@ -1,0 +1,57 @@
+name: 🐛 Bug 回報
+description: 回報本 Skill 的錯誤、不一致、或過期內容
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感謝您回報問題。為了讓維護者能快速複現與修正，請盡可能填寫下列欄位。
+
+        > **本 Skill 為非官方資源**：若問題涉及官方 API 行為（非本 Skill 內容描述錯誤），建議同時向 <https://github.com/omgtwhub/> 確認。
+  - type: dropdown
+    id: category
+    attributes:
+      label: 問題類別
+      options:
+        - 指南內容錯誤（guides/）
+        - 技術參考錯誤（references/）
+        - 測試向量產出不一致
+        - Validator 誤報（CI false positive）
+        - Validator 漏報（應該擋下但沒擋）
+        - 模板程式碼錯誤（templates/）
+        - 平台入口檔錯誤（SKILL.md / CLAUDE.md / ...）
+        - 外部連結失效
+        - 歐買尬 / 歐付寶 區辨錯誤
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: file
+    attributes:
+      label: 涉及檔案
+      description: 例如 `guides/05-webhook-idempotency.md` 或 `scripts/validate-no-leaks.sh`
+      placeholder: guides/xx-xxx.md
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 問題描述
+      description: 請說明您遇到的問題、您期望的行為、以及實際觀察到的行為
+    validations:
+      required: true
+  - type: textarea
+    id: ai_behavior
+    attributes:
+      label: AI 實際產出（若適用）
+      description: 若問題是「AI 助手依本 Skill 產出錯誤程式碼」，請貼上 AI 的回應片段（請先移除任何真實金鑰）
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隱私確認
+      options:
+        - label: 我已移除所有真實 HashKey / HashIV / 正式 MerchantID / 真實訂單號
+          required: true
+        - label: 我已移除個案商家之內部路徑、真實 hostname、內部服務名
+          required: true

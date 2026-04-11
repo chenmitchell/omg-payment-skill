@@ -1,0 +1,96 @@
+<!--
+  ==========================================================
+  head-jsonld.html — 貼入商家首頁 <head> 內
+  搭配 guides/18-merchant-ai-optimization.md
+  提供 schema.org 結構化資料給 AI 搜尋引擎
+  ==========================================================
+-->
+
+<!-- Organization schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "{{ site_name }}",
+  "url": "https://{{ domain }}",
+  "logo": "https://{{ domain }}/logo.png",
+  "description": "{{ one_line_description }}",
+  "address": {
+    "@type": "PostalAddress",
+    "addressCountry": "{{ country_code }}"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "email": "{{ contact_email }}",
+    "contactType": "customer service",
+    "availableLanguage": ["zh-TW", "en"]
+  },
+  "paymentAccepted": [
+    "Credit Card",
+    "ATM Transfer",
+    "Convenience Store"
+  ],
+  "currenciesAccepted": "TWD",
+  "sameAs": [
+    "{{ facebook_url }}",
+    "{{ instagram_url }}",
+    "{{ linkedin_url }}"
+  ]
+}
+</script>
+
+<!-- WebSite schema with search action -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ site_name }}",
+  "url": "https://{{ domain }}",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://{{ domain }}/search?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<!-- Store / LocalBusiness schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Store",
+  "name": "{{ site_name }}",
+  "description": "{{ one_line_description }}",
+  "url": "https://{{ domain }}",
+  "priceRange": "{{ price_range }}",
+  "paymentAccepted": "Credit Card, ATM, Convenience Store",
+  "currenciesAccepted": "TWD"
+}
+</script>
+
+<!-- OpenGraph meta tags -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ site_name }}">
+<meta property="og:title" content="{{ site_name }}">
+<meta property="og:description" content="{{ one_line_description }}">
+<meta property="og:url" content="https://{{ domain }}">
+<meta property="og:image" content="https://{{ domain }}/og-image.png">
+<meta property="og:locale" content="zh_TW">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ site_name }}">
+<meta name="twitter:description" content="{{ one_line_description }}">
+<meta name="twitter:image" content="https://{{ domain }}/og-image.png">
+
+<!-- Standard meta -->
+<meta name="description" content="{{ one_line_description }}">
+<meta name="keywords" content="{{ site_name }}, {{ business_type }}, OMG 金流, 歐買尬, {{ custom_keywords }}">
+<meta name="author" content="{{ merchant_name }}">
+
+<!-- LLM-friendly index reference -->
+<link rel="alternate" type="text/markdown" title="LLM-friendly index" href="https://{{ domain }}/llms.txt">
+<link rel="alternate" type="text/markdown" title="LLM-friendly full knowledge pack" href="https://{{ domain }}/llms-full.txt">

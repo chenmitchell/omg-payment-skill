@@ -1,0 +1,55 @@
+name: ✨ 新增功能建議
+description: 建議新增 guide、template、validator、平台支援或其他功能
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感謝您提出建議。請參考 [`ROADMAP.md`](../blob/main/ROADMAP.md) 確認您的建議是否已在規劃中。
+  - type: dropdown
+    id: category
+    attributes:
+      label: 建議類別
+      options:
+        - 新增 guide（整合指南）
+        - 新增 references（技術參考）
+        - 新增 template（後端骨架 / 儀表板 / bot）
+        - 新增 validator（CI 檢查項）
+        - 新增平台入口（AI 平台支援）
+        - 新增 backend 語言支援
+        - 新增英文化翻譯
+        - 新增測試向量
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解決的問題
+      description: 您目前在整合歐買尬金流時遇到什麼困難？本 Skill 現況為何不夠？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建議的做法
+      description: 您希望 repo 新增什麼檔案 / 章節 / 行為？
+    validations:
+      required: true
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: 是否願意貢獻
+      options:
+        - label: 我願意自己開 PR 實作這個建議
+        - label: 我需要維護者協助設計，但可幫忙 review
+        - label: 我只是提建議，由其他人實作
+  - type: checkboxes
+    id: non_goals
+    attributes:
+      label: 我已確認這不是 Non-goal
+      description: 請查閱 ROADMAP.md 的 Non-goals 區段
+      options:
+        - label: 我已確認本建議不涉及 SDK 包裝、破解金流、涵蓋歐付寶（歐付寶 OPay 與歐買尬 OMG 為獨立不同的兩家公司，本 Skill 僅處理歐買尬）、或其他 ROADMAP.md 列為不做的項目
+          required: true

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>OMG 測試後台 Console（非官方）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --err: #ef4444;
+    --btn: #3b82f6;
+    --btn-hover: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  header {
+    padding: 16px 24px; background: var(--panel);
+    border-bottom: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 18px; }
+  header .tag {
+    display: inline-block; padding: 2px 8px; margin-left: 8px;
+    background: var(--err); color: white; border-radius: 4px;
+    font-size: 12px; font-weight: bold;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px; padding: 16px 24px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px;
+  }
+  .card h2 {
+    margin: 0 0 12px 0; font-size: 15px; color: var(--accent);
+    border-bottom: 1px solid var(--border); padding-bottom: 8px;
+  }
+  .full-row { grid-column: 1 / -1; }
+  button {
+    background: var(--btn); color: white; border: 0;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; margin: 4px 4px 4px 0;
+  }
+  button:hover { background: var(--btn-hover); }
+  button.primary {
+    background: var(--ok); font-weight: bold; padding: 12px 20px;
+    font-size: 15px;
+  }
+  button.danger { background: var(--err); }
+  button.warn { background: var(--warn); color: #111; }
+  input, textarea, select {
+    background: #0f172a; color: var(--text); border: 1px solid var(--border);
+    padding: 6px 8px; border-radius: 4px; font-size: 13px;
+    font-family: inherit; width: 100%;
+  }
+  textarea { font-family: "Menlo", "Consolas", monospace; min-height: 80px; }
+  label { display: block; margin: 6px 0 2px; color: var(--muted); font-size: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .step {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; margin: 6px 0;
+    background: #0f172a; border-left: 4px solid var(--muted); border-radius: 4px;
+  }
+  .step.ok { border-left-color: var(--ok); }
+  .step.warn { border-left-color: var(--warn); }
+  .step.err { border-left-color: var(--err); }
+  .step .dot { font-size: 16px; }
+  .step .name { flex: 1; font-weight: 500; }
+  .step .latency { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .log-panel {
+    height: 320px; overflow-y: auto; background: #020617;
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 8px; font-family: "Menlo", "Consolas", monospace;
+    font-size: 12px;
+  }
+  .log-line { padding: 2px 0; border-bottom: 1px dotted #1e293b; }
+  .log-line.OK { color: var(--ok); }
+  .log-line.WARN { color: var(--warn); }
+  .log-line.ERROR { color: var(--err); }
+  .log-ts { color: var(--muted); margin-right: 6px; }
+  .kv { font-family: "Menlo", "Consolas", monospace; font-size: 12px; white-space: pre-wrap; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .disclaimer {
+    background: #7f1d1d; color: #fecaca; padding: 8px 12px;
+    border-radius: 6px; margin: 0 24px; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧪 OMG 測試後台 Console <span class="tag">非官方</span></h1>
+  <div class="muted">歐買尬 / MacroWell OMG · 本工具與 OMG 無關</div>
+</header>
+
+<div class="disclaimer">
+  ⚠️ 這是一份非官方的社群測試工具。所有呼叫只會打到你在 .env 設定的測試環境，絕不會碰正式環境。
+  使用正式環境的串接請看 guides/07-prod-dashboard.md 的 read-only probe 模式。
+</div>
+
+<main>
+
+  <!-- 一鍵全鏈路測試 -->
+  <div class="card full-row">
+    <h2>🚀 一鍵全鏈路測試</h2>
+    <p class="muted">按下去會跑：create_order → MAC 驗證 → HTTP POST → query_order → refund 簽名 → webhook self-ping，並顯示每一步的綠燈 / 紅燈 / 延遲。</p>
+    <button class="primary" onclick="runFullChain()">▶️ 一鍵全鏈路測試</button>
+    <button class="warn" onclick="clearChainResult()">清除結果</button>
+    <div id="chainResult" style="margin-top: 12px;"></div>
+  </div>
+
+  <!-- 分功能測試 -->
+  <div class="card">
+    <h2>💳 分功能測試</h2>
+    <label>測試金額（TWD）</label>
+    <input id="testAmount" type="number" value="100" />
+
+    <label>付款方式</label>
+    <select id="testMethod">
+      <option value="ALL">ALL（導向選擇頁）</option>
+      <option value="Credit">信用卡一次付清</option>
+      <option value="Credit3">信用卡 3 期</option>
+      <option value="Credit6">信用卡 6 期</option>
+      <option value="Credit12">信用卡 12 期</option>
+      <option value="Credit24">信用卡 24 期</option>
+      <option value="CreditRecurring">信用卡定期定額（Credit + PeriodAmount）</option>
+      <option value="ATM">ATM 虛擬帳號</option>
+      <option value="CVS">超商代碼</option>
+      <option value="BarcodeATM">超商快付（BarcodeATM）</option>
+      <option value="AFTEE">AFTEE 先享後付</option>
+    </select>
+
+    <div style="margin-top: 10px;">
+      <button onclick="callApi('/api/test/create-order', {amount: +testAmount.value, method: testMethod.value})">1️⃣ create_order</button>
+      <button onclick="callApi('/api/test/query-order', {})">2️⃣ query_order (fake)</button>
+      <button onclick="callApi('/api/test/refund-sign', {trade_no: 'FAKETRADE', amount: 1})">3️⃣ refund 簽名</button>
+    </div>
+  </div>
+
+  <!-- CheckMacValue 工具 -->
+  <div class="card">
+    <h2>🔑 CheckMacValue 工具</h2>
+
+    <label>參數（JSON，會自動排序 + 計算 MAC）</label>
+    <textarea id="macInput">{
+  "MerchantID": "1000031",
+  "MerchantTradeNo": "TEST001",
+  "TotalAmount": "100",
+  "PaymentType": "aio"
+}</textarea>
+
+    <div style="margin-top: 8px;">
+      <button onclick="calcMac()">計算 MAC</button>
+      <button onclick="verifyMac()">驗證 MAC</button>
+    </div>
+    <div id="macResult" class="kv muted" style="margin-top: 8px;"></div>
+  </div>
+
+  <!-- Webhook 重送模擬 -->
+  <div class="card">
+    <h2>🔁 Webhook 重送模擬（驗冪等性）</h2>
+    <p class="muted">對本機 <code>/webhook</code> 並行打 N 次相同 payload，驗你的 idempotency 有沒有正確吸收。</p>
+
+    <label>訂單號（可不填，會自動產生）</label>
+    <input id="simTradeNo" type="text" placeholder="SIM..." />
+
+    <label>並行次數</label>
+    <input id="simN" type="number" value="10" />
+
+    <button class="warn" onclick="simulateWebhook()">重送 N 次</button>
+    <div id="simResult" class="kv muted" style="margin-top: 8px;"></div>
+  </div>
+
+  <!-- 付款方式速查 -->
+  <div class="card">
+    <h2>📖 OMG ChoosePayment 速查（依官方 SSOT）</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="border-bottom: 1px solid var(--border);"><th align="left">ChoosePayment</th><th align="left">說明</th></tr>
+      <tr><td>ALL</td><td>顯示全部付款方式，可搭配 IgnorePayment 排除</td></tr>
+      <tr><td>Credit</td><td>信用卡一次付清</td></tr>
+      <tr><td>Credit + CreditInstallment=3/6/12/18/24/30</td><td>信用卡分期（僅玉山銀行發卡）</td></tr>
+      <tr><td>Credit + PeriodAmount/PeriodType/Frequency/ExecTimes</td><td>信用卡定期定額（<strong>無</strong> CreditPeriod 此值）</td></tr>
+      <tr><td>Credit + UnionPay=1</td><td>銀聯卡（需另行申請）</td></tr>
+      <tr><td>ATM</td><td>ATM 虛擬帳號</td></tr>
+      <tr><td>CVS</td><td>超商代碼（不得販售遊戲點數）</td></tr>
+      <tr><td>BarcodeATM</td><td>超商快付（三段 Code39 條碼，<strong>無</strong> BARCODE 此值）</td></tr>
+      <tr><td>AFTEE</td><td>先享後付（需另行申請）</td></tr>
+    </table>
+    <div class="muted" style="margin-top: 8px;">資料來源：references/omg-official-api-spec.md §3（SSOT）。</div>
+  </div>
+
+  <!-- Log panel -->
+  <div class="card full-row">
+    <h2>📋 Log（最新 500 筆）</h2>
+    <button onclick="refreshLogs()">🔄 重新載入</button>
+    <button onclick="downloadLogs()">⬇️ 下載 JSON</button>
+    <button onclick="clearLogs()">清除顯示</button>
+    <div id="logPanel" class="log-panel" style="margin-top: 8px;"></div>
+  </div>
+
+</main>
+
+<script>
+const API = '';  // 同一個 origin
+
+async function callApi(path, body) {
+  try {
+    const resp = await fetch(API + path, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body || {}),
+    });
+    const data = await resp.json();
+    refreshLogs();
+    return data;
+  } catch (e) {
+    alert('API error: ' + e.message);
+  }
+}
+
+async function runFullChain() {
+  document.getElementById('chainResult').innerHTML = '<div class="muted">跑測試中...</div>';
+  const data = await callApi('/api/test/full-chain', {});
+  if (!data) return;
+  const steps = data.chain || [];
+  const html = steps.map(s => {
+    const cls = s.ok ? 'ok' : 'err';
+    const dot = s.ok ? '🟢' : '🔴';
+    const latency = (s.detail && s.detail.latency_ms) ? `${s.detail.latency_ms}ms` : '';
+    return `<div class="step ${cls}">
+      <span class="dot">${dot}</span>
+      <span class="name">${s.step}</span>
+      <span class="latency">${latency}</span>
+    </div>`;
+  }).join('');
+  const totalHtml = `<div class="muted" style="margin-top: 8px;">總耗時：${data.total_ms} ms · 結果：${data.ok ? '✅ 全綠' : '⚠️ 有紅燈，看 log'}</div>`;
+  document.getElementById('chainResult').innerHTML = html + totalHtml;
+}
+
+function clearChainResult() {
+  document.getElementById('chainResult').innerHTML = '';
+}
+
+async function calcMac() {
+  let params;
+  try {
+    params = JSON.parse(document.getElementById('macInput').value);
+  } catch (e) {
+    alert('JSON parse error: ' + e.message);
+    return;
+  }
+  const r = await callApi('/api/test/mac-calculate', {params});
+  if (r) {
+    document.getElementById('macResult').textContent =
+      'MAC = ' + r.mac;
+  }
+}
+
+async function verifyMac() {
+  let params;
+  try {
+    params = JSON.parse(document.getElementById('macInput').value);
+  } catch (e) {
+    alert('JSON parse error: ' + e.message);
+    return;
+  }
+  const r = await callApi('/api/test/mac-verify', {params});
+  if (r) {
+    document.getElementById('macResult').textContent =
+      (r.ok ? '✅ 正確' : '❌ 不符') +
+      '\nreceived = ' + r.received +
+      '\nexpected = ' + r.expected;
+  }
+}
+
+async function simulateWebhook() {
+  const trade_no = document.getElementById('simTradeNo').value || ('SIM' + Date.now());
+  const n = +document.getElementById('simN').value || 10;
+  document.getElementById('simResult').textContent = `發射中 (${n} 次)...`;
+  const r = await callApi('/api/test/webhook-simulate', {trade_no, n});
+  if (r) {
+    document.getElementById('simResult').textContent =
+      `總共 ${r.n} 次，其中 ${r['200_count']} 次回 200\n` +
+      `idempotency_key = ${r.idempotency_key}\n` +
+      `期望：${r.n} 次全部 200，DB 只會寫 1 筆 new + ${r.n - 1} 筆 early-dup/absorbed`;
+  }
+}
+
+async function refreshLogs() {
+  const resp = await fetch(API + '/api/test/logs');
+  const data = await resp.json();
+  const logs = data.logs || [];
+  const html = logs.slice().reverse().map(l => {
+    const ts = new Date(l.ts * 1000).toLocaleTimeString();
+    const d = JSON.stringify(l.data);
+    return `<div class="log-line ${l.level}"><span class="log-ts">${ts}</span>[${l.level}] ${l.step} → ${d}</div>`;
+  }).join('');
+  document.getElementById('logPanel').innerHTML = html || '<div class="muted">(no logs yet)</div>';
+}
+
+async function downloadLogs() {
+  const resp = await fetch(API + '/api/test/logs');
+  const data = await resp.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'omg-test-logs-' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearLogs() {
+  document.getElementById('logPanel').innerHTML = '';
+}
+
+// 初始載入
+refreshLogs();
+setInterval(refreshLogs, 5000);
+</script>
+</body>
+</html>
