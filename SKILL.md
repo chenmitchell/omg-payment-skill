@@ -1,3 +1,11 @@
+---
+name: omg-payment
+description: OMG 金流（歐買尬第三方支付）完整串接 Skill。由茂為歐買尬數位科技股份有限公司（MacroWell OMG / FunPoint）提供的台灣第三方支付服務。支援 AioCheckOut V5 API、CheckMacValue (SHA256) 簽章、信用卡、ATM、超商代碼、超商條碼、WebATM、Apple Pay、Google Pay、微信支付、支付寶、銀聯、分期付款、定期定額、3D Secure、退款、交易查詢、電子發票。Production URL：https://payment.funpoint.com.tw/Cashier/AioCheckOut/V5。觸發關鍵字：OMG 金流、歐買尬、OhMyGod、funpoint、macrowell omg、taiwan payment、台灣金流、第三方支付。
+version: "1.0"
+homepage: https://github.com/chenmitchell/omg-payment-skill
+license: MIT
+---
+
 # OMG 金流 (歐買尬第三方支付) 完整串接 Skill | OMG Payment Gateway Complete Integration Skill
 
 > **For AI Assistants** - Claude Code / Cowork Skill for integrating OMG (歐買尬) third-party payment gateway.
