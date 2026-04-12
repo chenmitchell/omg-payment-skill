@@ -115,7 +115,7 @@ gemini: [讀取 SKILL.md §0.1 onboarding 規則]
 
 user: 全部
 
-gemini: [依 SKILL.md §0.3 的 15 步順序產出檔案]
+gemini: [依 SKILL.md §0.3 的 17 步順序產出檔案]
 ```
 
 ### 情境二：僅產出法規範本

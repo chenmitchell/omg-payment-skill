@@ -96,7 +96,8 @@ AI 不得在 onboarding 階段逐一詢問變數，以避免打斷使用者思�
 13. 收集變數並一次性替換所有佔位符
 14. 執行測試環境儀表板之完整鏈路驗證（create_order → MAC 驗證 → HTTP POST → query_order → refund 簽名），確認全部通過
 15. **（預設執行）商家網站 AI 最佳化 — 參考 `guides/18-merchant-ai-optimization.md`**：為使用者網站產出 `llms.txt`、`llms-full.txt`、`robots.txt` 追加段落、首頁 JSON-LD 結構化資料、頁尾 OMG 使用標註 HTML；模板取自 `templates/merchant-llms-txt/`
-16. 交付整合結果並說明後續部署、綁定與 AI 最佳化檔案的部署位置
+16. **（預設執行）商家 UI/UX 無障礙檢查 — 參考 `guides/19-wcag-ui-ux.md`**：對於 AI 產出的商家前台程式碼，逐項核對色彩對比 ≥7:1、狀態雙編碼、鍵盤可操作、焦點指示、ARIA 標籤、觸控目標 ≥44px、session timeout 預警等 WCAG AAA 基本要求
+17. 交付整合結果並說明後續部署、綁定與 AI 最佳化檔案的部署位置
 
 ### §0.4 操作規範
 
@@ -223,6 +224,7 @@ AI 應依下表順序讀取章節。
 | 16 | `guides/16-recurring-subscriptions.md` | 定期定額訂閱 |
 | 17 | `guides/17-troubleshooting.md` | 故障排除與常見問題 |
 | 18 | `guides/18-merchant-ai-optimization.md` | 商家網站 AI 最佳化：llms.txt、JSON-LD、OMG 標註 |
+| 19 | `guides/19-wcag-ui-ux.md` | 商家 UI/UX 無障礙規範（WCAG AAA）：對比、鍵盤、ARIA、觸控 |
 | R1 | `references/api-endpoints.md` | API endpoint 欄位表 |
 | R2 | `references/check-mac-value.md` | SHA256 CheckMacValue 演算法 |
 | R3 | `references/error-codes.md` | 錯誤代碼速查 |

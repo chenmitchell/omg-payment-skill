@@ -427,6 +427,35 @@ sequenceDiagram
 
 退款採**警告但不阻擋**設計：超過單筆上限、每日總額或每日次數時，僅顯示警示供操作者判斷，不自動拒絕執行。詳見 `guides/10-refund-safety.md`。
 
+### 如何申請並綁定 Telegram / Discord Bot
+
+Bot 的申請完全免費、無需信用卡、不需要額外開戶。本段提供最精簡的快速上手路徑，完整步驟請見 `guides/08-telegram-bot.md`（§零步驟）與 `guides/09-discord-bot.md`（§零步驟）。
+
+**Telegram — 3 分鐘取得 token**
+
+1. 於 Telegram 搜尋並加入官方帳號 `@BotFather`
+2. 輸入 `/newbot`，依指示設定顯示名稱與 username（必須以 `_bot` 結尾）
+3. BotFather 會回覆一段形如 `123456789:ABCdef...` 的 token，將其填入 `templates/telegram-bot/.env` 的 `TG_BOT_TOKEN=` 後面
+4. 啟動 bot：`cd templates/telegram-bot && pip install -r requirements.txt && python bot.py`
+5. 於您希望接收通知的 Telegram 聊天室（私人對話或群組）輸入 `/bind <ADMIN_TOKEN>` 完成綁定
+
+若要讓 bot 進群組，先把它拉進群組後於 BotFather 執行 `/setprivacy` 選 `Disable`。正式環境建議使用僅有相關人員的私人群組，避免 admin token 曝光。Token 若不慎外流，立即於 BotFather 執行 `/revoke`。
+
+**Discord — 5 分鐘取得 token**
+
+1. 以 Discord 帳號登入 <https://discord.com/developers/applications>
+2. 按 `New Application`，輸入應用程式名稱
+3. 左側選單點 `Bot` → `Reset Token`，複製跳出的 token
+4. 啟用 Privileged Gateway Intents：`Server Members Intent`、`Message Content Intent`
+5. 左側 `OAuth2` → `URL Generator`，勾選 scopes `bot` 與 `applications.commands`，Bot Permissions 僅勾 `Send Messages`、`Embed Links`、`Use Slash Commands`、`Read Message History`
+6. 複製產生的邀請 URL，貼到瀏覽器，選擇要加入的伺服器（建議建立僅有相關人員的私人伺服器）
+7. 將 token 填入 `templates/discord-bot/.env` 的 `DISCORD_BOT_TOKEN=`，啟動 bot 後於任一頻道輸入 `/bind <ADMIN_TOKEN>`
+
+Slash command 首次同步可能需數分鐘。Token 若外流，立即於開發者後台 `Bot` 頁面點 `Reset Token`。
+
+> [!WARNING]
+> 無論哪一個 bot，**token 與 admin token 都不得寫入版本控制、不得貼於公開頻道、不得 email 分享**。僅寫入本機 `.env`，並於 `.gitignore` 中排除。若不慎外流，立即依上述流程重置並更新 `.env` 後重啟 bot。
+
 ### CI 驗證流程
 
 每次 PR 送出或 push 到 main，下列 8 個 validator 會自動執行，**任一失敗即擋下合併**：
@@ -596,6 +625,7 @@ omg-payment-skill/
 | 16 | `guides/16-recurring-subscriptions.md` | 定期定額訂閱整合 |
 | 17 | `guides/17-troubleshooting.md` | 故障排除（含歐付寶 / 歐買尬辨識） |
 | 18 | `guides/18-merchant-ai-optimization.md` | 商家 AI 最佳化：為使用者產出 llms.txt、JSON-LD、OMG 標註 |
+| 19 | `guides/19-wcag-ui-ux.md` | 商家 UI/UX 無障礙規範（WCAG AAA）：色彩對比、鍵盤操作、ARIA、行動觸控 |
 | R1 | `references/api-endpoints.md` | 核心 API endpoint 欄位表 |
 | R2 | `references/check-mac-value.md` | SHA256 CheckMacValue 演算法 |
 | R3 | `references/error-codes.md` | 錯誤代碼速查 |

@@ -216,20 +216,32 @@ Sitemap: https://{{ domain }}/sitemap.xml
 
 完成上述所有檔案後，使用者的網站即具備下列能力：
 
-```mermaid
-flowchart LR
-    M[商家網站] -->|llms.txt| AI1[Claude / GPT / Gemini]
-    M -->|JSON-LD| AI2[AI 搜尋引擎]
-    M -->|data-payment-provider=omg| OMG[OMG 合作夥伴程式]
-    M -->|schema.org/PaymentService| Search[一般搜尋引擎]
-    AI1 --> User1[AI 助手使用者]
-    AI2 --> User2[AI 搜尋使用者]
-    OMG --> Partner[OMG 官方推廣]
-    Search --> User3[一般搜尋使用者]
+> 🧭 **純文字重述**：商家網站作為中心節點，透過四條路徑對外發送訊號 — llms.txt 餵給 AI 助手（Claude、GPT、Gemini）→ 終端 AI 使用者；JSON-LD 餵給 AI 搜尋引擎 → AI 搜尋使用者；`data-payment-provider=omg` 餵給 OMG 合作夥伴爬蟲 → 官方推廣；`schema.org/PaymentService` 餵給一般搜尋引擎 → 一般搜尋使用者。
 
-    style M fill:#3B82F6,color:#fff
-    style OMG fill:#F97316,color:#fff
+```mermaid
+%%{init: {'flowchart': {'curve':'step','htmlLabels':true,'useMaxWidth':true},'themeVariables': {'fontSize':'16px','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+flowchart LR
+    M["🏬 商家網站"] -->|"llms.txt"| AI1["🤖 Claude / GPT / Gemini"]
+    M -->|"JSON-LD"| AI2["🔎 AI 搜尋引擎"]
+    M -->|"data-payment-provider=omg"| OMG["🔗 OMG 合作夥伴程式"]
+    M -->|"schema.org/PaymentService"| Search["🌐 一般搜尋引擎"]
+    AI1 --> User1["👤 AI 助手使用者"]
+    AI2 --> User2["👤 AI 搜尋使用者"]
+    OMG --> Partner["🏆 OMG 官方推廣"]
+    Search --> User3["👤 一般搜尋使用者"]
+
+    style M fill:#1E3A8A,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style AI1 fill:#3730A3,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style AI2 fill:#3730A3,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style OMG fill:#581C87,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style Search fill:#134E4A,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style User1 fill:#164E63,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style User2 fill:#164E63,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style Partner fill:#14532D,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
+    style User3 fill:#164E63,stroke:#FFFFFF,stroke-width:3px,color:#FFFFFF
 ```
+
+> ♿ 配色遵循 [`docs/accessibility.md`](../docs/accessibility.md)：Okabe-Ito 色盲安全色盤，對比 ≥ 7:1，`curve: step` 直角連線。
 
 **OMG 如何找到您**（假設 OMG 實作類似爬蟲機制）：
 

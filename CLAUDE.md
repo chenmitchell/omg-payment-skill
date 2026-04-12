@@ -62,7 +62,7 @@ Claude 將依 `guides/00-onboarding.md` 之四問流程展開整合需求收集�
 
 Claude Code 支援直接於終端機執行指令、修改檔案、查看 log，適合本 skill 所定義之整合流程：
 
-1. **一次產出整個檔案樹**：Claude 可依 `SKILL.md` §0.3 之 15 步順序，一次性產出後端、儀表板、bot、法規文件
+1. **一次產出整個檔案樹**：Claude 可依 `SKILL.md` §0.3 之 17 步順序，一次性產出後端、儀表板、bot、法規文件
 2. **自動執行測試儀表板**：產出完成後，Claude 可直接執行 `python templates/omg-test-console/backend.py` 並於終端機檢視結果
 3. **即時調整**：若全鏈路測試失敗，Claude 可讀取 log 並自動修正問題
 4. **長流程追蹤**：Claude Code 的 TODO 追蹤機制適合本 skill 之多步驟整合
@@ -120,7 +120,7 @@ claude: 好的。在開始之前，請先回答四個問題：
 
 user: 全部
 
-claude: 已收到。開始依 15 步執行...
+claude: 已收到。開始依 17 步執行...
         [產出檔案]
         [執行全鏈路測試]
         [提示補齊商家資訊]
