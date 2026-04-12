@@ -819,6 +819,6 @@ MIT License，詳見 `LICENSE`。
 ---
 
 **整合對象**：OMG 歐買尬金流
-**專案狀態**：社群維護 / 非官方 / 與 OMG 無隸屬關係
+**專案狀態**：社群維護 / 非官方
 **參考架構**：<https://github.com/ECPay/ECPay-API-Skill>
 **官方資源**：<https://github.com/omgtwhub/>

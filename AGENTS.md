@@ -206,7 +206,7 @@ response = agent.run(
 
 本 skill 採 MIT License。使用本 skill 建置的 agent 若對外提供服務，應於使用者介面明確標示：
 
-- 本服務為社群維護，與 MacroWell OMG 無隸屬關係
+- 本服務為社群維護（非官方）
 - 法規範本需由使用者自行審閱
 - 金流整合之最終品質由使用者驗證
 

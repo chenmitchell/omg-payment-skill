@@ -2,7 +2,7 @@
 
 ## 適用範圍
 
-本安全政策適用於 `omg-payment-skill` repo 之程式碼、文件、模板與 skill 內容。本 skill 為社群維護，與 MacroWell OMG Digital Entertainment Co., Ltd. 無隸屬關係。
+本安全政策適用於 `omg-payment-skill` repo 之程式碼、文件、模板與 skill 內容。本 skill 為社群維護（非官方）。
 
 ## 支援的版本
 
