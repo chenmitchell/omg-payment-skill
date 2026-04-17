@@ -801,8 +801,8 @@ MIT License，詳見 `LICENSE`。
 ### 維護者資訊
 
 - **維護者**：Mitchell Chen
-- **個人介紹**：<https://www.mitch.tw>
-- **公開作品**：<https://outpost.mitch.tw>
+- **個人網站**：<https://www.mitch.tw>
+- **GitHub**：<https://github.com/chenmitchell>
 
 ### 給所有開發者的一段話
 
