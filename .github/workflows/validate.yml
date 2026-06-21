@@ -44,7 +44,7 @@ jobs:
     name: 版本同步
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run validate-version-sync.sh
         run: bash scripts/validate-version-sync.sh
 
@@ -52,7 +52,7 @@ jobs:
     name: AI 入口引用
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run validate-ai-index.sh
         run: bash scripts/validate-ai-index.sh
 
@@ -60,7 +60,7 @@ jobs:
     name: AI 入口 parity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run validate-agents-parity.sh
         run: bash scripts/validate-agents-parity.sh
 
@@ -68,7 +68,7 @@ jobs:
     name: Bot menu API parity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run validate-bot-menu-parity.sh
         run: bash scripts/validate-bot-menu-parity.sh
 
@@ -76,7 +76,7 @@ jobs:
     name: 內部資訊洩漏掃描
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run validate-no-leaks.sh
         run: bash scripts/validate-no-leaks.sh
 
@@ -84,7 +84,7 @@ jobs:
     name: 歐買尬 vs 歐付寶 區辨
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run validate-omg-not-opay.sh
         run: bash scripts/validate-omg-not-opay.sh
 
@@ -92,7 +92,7 @@ jobs:
     name: CheckMacValue 測試向量（Python）
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -103,7 +103,7 @@ jobs:
     name: CheckMacValue 測試向量（Node.js）
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
